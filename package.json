@@ -9,8 +9,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "babel-eslint": "^8.2.5",
     "botbuilder": "^3.13.1",
     "botbuilder-azure": "^3.0.4",
+    "eslint": "^5.0.1",
+    "eslint-config-defaults": "^9.0.0",
+    "eslint-plugin-react": "^7.10.0",
     "restify": "^5.0.0"
   },
   "devDependencies": {
