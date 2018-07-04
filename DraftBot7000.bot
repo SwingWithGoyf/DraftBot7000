@@ -1,14 +1,23 @@
 {
-    "name": "DraftBot7000",
+    "name": "DraftBot7000new",
+    "description": "",
     "secretKey": "",
     "services": [
         {
-            "type": "endpoint",
-            "name": "DraftBot7000",
-            "id": "http://localhost:3978/api/messages",
             "appId": "",
+            "id": "http://localhost:8000/api/messages",
+            "type": "endpoint",
             "appPassword": "",
-            "endpoint": "http://localhost:3978/api/messages"
+            "endpoint": "http://localhost:8000/api/messages",
+            "name": "DraftBot7000new"
+        },
+        {
+            "appId": "",
+            "id": "c14f19d0-7fcd-11e8-8d55-4da9d8cdb0f2",
+            "type": "endpoint",
+            "appPassword": "",
+            "endpoint": "http://localhost:8000/api/messages",
+            "name": "DB7000"
         }
     ]
 }
