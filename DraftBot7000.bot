@@ -1,0 +1,14 @@
+{
+    "name": "DraftBot7000",
+    "secretKey": "",
+    "services": [
+        {
+            "type": "endpoint",
+            "name": "DraftBot7000",
+            "id": "http://localhost:3978/api/messages",
+            "appId": "",
+            "appPassword": "",
+            "endpoint": "http://localhost:3978/api/messages"
+        }
+    ]
+}

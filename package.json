@@ -15,7 +15,7 @@
     "eslint": "^5.0.1",
     "eslint-config-defaults": "^9.0.0",
     "eslint-plugin-react": "^7.10.0",
-    "restify": "^5.0.0"
+    "restify": "^5.2.1"
   },
   "devDependencies": {
     "request": "^2.81.0",
