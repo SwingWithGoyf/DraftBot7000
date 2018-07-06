@@ -41,12 +41,13 @@ bot.dialog('help', function (session, args, next) {
     session.endDialog("This is a bot that can help you be a better herf derf. <br/>Please say 'next' to continue");
 })
 .triggerAction({
-    matches: /^help$/i,
-    onSelectAction: (session, args, next) => {
-        // Add the help dialog to the dialog stack 
-        // (override the default behavior of replacing the stack)
-        session.beginDialog(args.action, args);
-    }
+    matches: /^help$/i
+    // ,
+    // onSelectAction: (session, args, next) => {
+    //     // Add the help dialog to the dialog stack 
+    //     // (override the default behavior of replacing the stack)
+    //     session.beginDialog(args.action, args);
+    // }
 });
 
 // This dialog help the user order dinner to be delivered to their hotel room.
@@ -94,6 +95,9 @@ bot.dialog('orderDinner', [
 
 bot.dialog('/', [
     function (session) {
+        for (var i = 0; i < session.message.entities.length; i++) {
+            session.send(`Entity #${i}: ${session.message.entities[i]}`);
+        }
         // capture session user information
         session.userData = {"userId": session.message.user.id, "jobTitle": "Senior Developer"};
         builder.Prompts.text(session, "Hello... What's your handle, sassafras?");
