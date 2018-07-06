@@ -82,7 +82,7 @@ bot.dialog('orderDinner', [
     function(session, results){
         if(results.response){
             session.userData.room = results.response;
-            var msg = `Thank you. Your order will be delivered to room #${session.dialogData.room}`;
+            var msg = `Thank you. Your order will be delivered to room #${session.userData.room}`;
             session.endDialog(msg);
         }
     }
