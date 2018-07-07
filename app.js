@@ -35,6 +35,25 @@ var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azu
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot(connector, function(session) {
     if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId) {
+        if (session.message.address.channelId.toLowerCase() === "slack") {
+            session.send("DEBUG: I see that you're on a slack endpoint!");
+            session.send("DEBUG: here's your fancy slack info: ");
+            if (session.message.address.channelData && session.message.address.channelData.SlackMessage) {
+                var slackData = session.message.address.channelData.SlackMessage;
+                session.send(`DEBUG: You typed ${slackData.event.text}, your user ID is ${slackData.event.user}, your channel is ${slackData.event.channel}, and your team is ${slackData.team_id}`);
+                if (slackData.event.channel.charAt(0) === 'D') {
+                    session.send(`DEBUG: This message was sent as a DM`);
+                } else if (slackData.event.channel.char(0) === 'C') {
+                    session.send(`DEBUG: This message was sent in a channel`);
+                } else {
+                    session.send(`DEBUG: This message was sent in neither a channel nor a DM`);
+                }
+            } else {
+                session.send("DEBUG: Couldn't find a SlackMessage object for some reason, consult tech support!");
+            }
+        } else if (session.message.address.channelId.toLowerCase() === "emulator") {
+            session.send("DEBUG: I see that you're on an emulator endpoint!");
+        }
         session.send(`Debug info: your channel ID is ${session.message.address.conversation.id} and your messaging type is ${session.message.address.channelId}`);
     }
     if (session.message.text.toLowerCase().indexOf("draftbot") > -1) {
