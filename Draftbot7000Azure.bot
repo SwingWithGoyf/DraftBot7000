@@ -1,0 +1,15 @@
+{
+    "name": "Draftbot7000Azure",
+    "description": "",
+    "secretKey": "",
+    "services": [
+        {
+            "appId": "e8859bc0-fea5-4445-8501-b5b1d69255e9",
+            "id": "aed99c40-8233-11e8-b8a9-771a2f87a023",
+            "type": "endpoint",
+            "appPassword": "iEvj73{}pjdkB%i-",
+            "endpoint": "https://draftbot7000.azurewebsites.net/api/messages",
+            "name": "https://draftbot7000.azurewebsites.net/api/messages"
+        }
+    ]
+}

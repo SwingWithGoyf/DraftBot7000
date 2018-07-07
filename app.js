@@ -34,13 +34,18 @@ var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azu
 
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot(connector, function(session) {
-    session.send("Welcome to draft bot 7000!  Here's some useful info: lorem ipsum etc");
+    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId) {
+        session.send(`Debug info: your channel ID is ${session.message.address.conversation.id} and your messaging type is ${session.message.address.channelId}`);
+    }
+    if (session.message.text.toLowerCase().indexOf("draftbot") > -1) {
+        session.send("Welcome to draft bot 7000!  Here's some useful info: lorem ipsum etc");
+    }
     session.endDialog();
 }).set('storage', tableStorage);
 
 // The dialog stack is cleared and this dialog is invoked when the user enters 'help'.
 bot.dialog('help', function (session, args, next) {
-    session.endDialog("This is a bot that can help you be a better herf derf. <br/>Please say 'next' to continue");
+    session.endDialog("This is a bot that can help you be a better herf derf. <br/>Currently supported commands are 'hello' and 'order dinner'");
 })
 .triggerAction({
     matches: /^help$/i
