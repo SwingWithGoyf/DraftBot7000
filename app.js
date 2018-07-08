@@ -69,7 +69,8 @@ bot.dialog('/', function(session) {
             } else {
                 var channelId = messageInfo[2];
                 var teamId = messageInfo[1];
-                var myId = "@" + address.recipient.id;
+                var myId = "@" + address.recipient.name;
+                myId = myId.toLowerCase();
                 var text = session.message.text;
                 session.send(`DEBUG: You typed ${text}, your user ID is ${session.message.user.id}, your channel is ${channelId}, and your team is ${teamId}`);
                 if (channelId.charAt(0) === 'D') {
