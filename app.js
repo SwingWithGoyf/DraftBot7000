@@ -57,9 +57,9 @@ require('./hello.js')(bot, builder);
 
 // fallback handler
 bot.dialog('/', function(session) {
-    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId && session.message.address.from) {
+    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId) {
         var address = session.message.address;
-        session.send(`DEBUG: Hello!  Your user ID is ${address.from.id}`);
+        session.send(`DEBUG: Hello!  Your user ID is ${session.message.user.id}`);
 
         if (address.channelId.toLowerCase() === "slack") {
             session.send("DEBUG: I see that you're on a slack endpoint!");
@@ -70,7 +70,7 @@ bot.dialog('/', function(session) {
                 var channelId = messageInfo[2];
                 var teamId = messageInfo[1];
                 var text = address.text;
-                session.send(`DEBUG: You typed ${text}, your user ID is ${address.from.id}, your channel is ${channelId}, and your team is ${teamId}`);
+                session.send(`DEBUG: You typed ${text}, your user ID is ${session.message.user.id}, your channel is ${channelId}, and your team is ${teamId}`);
                 if (channelId.charAt(0) === 'D') {
                     session.send(`DEBUG: This message was sent as a DM`);
                 } else if (channelId.char(0) === 'C') {
