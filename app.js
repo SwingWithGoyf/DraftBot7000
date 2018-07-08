@@ -69,6 +69,7 @@ bot.dialog('/', function(session) {
             } else {
                 var channelId = messageInfo[2];
                 var teamId = messageInfo[1];
+                var myId = messageInfo[0];
                 var text = session.message.text;
                 session.send(`DEBUG: You typed ${text}, your user ID is ${session.message.user.id}, your channel is ${channelId}, and your team is ${teamId}`);
                 if (channelId.charAt(0) === 'D') {
@@ -78,14 +79,18 @@ bot.dialog('/', function(session) {
                 } else {
                     session.send(`DEBUG: This message was sent in neither a channel nor a DM`);
                 }
+                if (text.toLowerCase().indexOf(myId) > -1) {
+                    session.send("DEBUG: you mentioned me");
+                } else {
+                    session.send("DEBUG: you did not mention me");
+                }
             } 
         } else if (address.channelId.toLowerCase() === "emulator") {
             session.send("DEBUG: I see that you're on an emulator endpoint!");
         }
         session.send(`Debug info: your channel ID is ${address.conversation.id} and your messaging type is ${address.channelId}`);
     }
-    if (session.message.text.toLowerCase().indexOf("draftbot") > -1) {
-        session.send("Welcome to draft bot 7000!  Here's some useful info: lorem ipsum etc");
-    }
+
+    session.send("Welcome to draft bot 7000!  Here's some useful info: lorem ipsum etc");
     session.endDialog();
 });
