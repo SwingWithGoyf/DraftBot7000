@@ -69,11 +69,11 @@ bot.dialog('/', function(session) {
             } else {
                 var channelId = messageInfo[2];
                 var teamId = messageInfo[1];
-                var text = address.text;
+                var text = session.message.text;
                 session.send(`DEBUG: You typed ${text}, your user ID is ${session.message.user.id}, your channel is ${channelId}, and your team is ${teamId}`);
                 if (channelId.charAt(0) === 'D') {
                     session.send(`DEBUG: This message was sent as a DM`);
-                } else if (channelId.char(0) === 'C') {
+                } else if (channelId.charAt(0) === 'C') {
                     session.send(`DEBUG: This message was sent in a channel`);
                 } else {
                     session.send(`DEBUG: This message was sent in neither a channel nor a DM`);
