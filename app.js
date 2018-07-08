@@ -33,34 +33,7 @@ var azureTableClient = new botbuilder_azure.AzureTableClient(tableName, process.
 var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azureTableClient);
 
 // Create your bot with a function to receive messages from the user
-var bot = new builder.UniversalBot(connector, function(session) {
-    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId) {
-        if (session.message.address.channelId.toLowerCase() === "slack") {
-            session.send("DEBUG: I see that you're on a slack endpoint!");
-            session.send("DEBUG: here's your fancy slack info: ");
-            if (session.message.address.channelData && session.message.address.channelData.SlackMessage) {
-                var slackData = session.message.address.channelData.SlackMessage;
-                session.send(`DEBUG: You typed ${slackData.event.text}, your user ID is ${slackData.event.user}, your channel is ${slackData.event.channel}, and your team is ${slackData.team_id}`);
-                if (slackData.event.channel.charAt(0) === 'D') {
-                    session.send(`DEBUG: This message was sent as a DM`);
-                } else if (slackData.event.channel.char(0) === 'C') {
-                    session.send(`DEBUG: This message was sent in a channel`);
-                } else {
-                    session.send(`DEBUG: This message was sent in neither a channel nor a DM`);
-                }
-            } else {
-                session.send("DEBUG: Couldn't find a SlackMessage object for some reason, consult tech support!");
-            }
-        } else if (session.message.address.channelId.toLowerCase() === "emulator") {
-            session.send("DEBUG: I see that you're on an emulator endpoint!");
-        }
-        session.send(`Debug info: your channel ID is ${session.message.address.conversation.id} and your messaging type is ${session.message.address.channelId}`);
-    }
-    if (session.message.text.toLowerCase().indexOf("draftbot") > -1) {
-        session.send("Welcome to draft bot 7000!  Here's some useful info: lorem ipsum etc");
-    }
-    session.endDialog();
-}).set('storage', tableStorage);
+var bot = new builder.UniversalBot(connector).set('storage', tableStorage);
 
 // The dialog stack is cleared and this dialog is invoked when the user enters 'help'.
 bot.dialog('help', function (session, args, next) {
@@ -76,6 +49,43 @@ bot.dialog('help', function (session, args, next) {
     // }
 });
 
+// order dinner command
 require('./orderDinner.js')(bot, builder);
 
+// hello commands
 require('./hello.js')(bot, builder);
+
+// fallback handler
+bot.dialog('/', function(session) {
+    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId && session.message.address.from) {
+        var address = session.message.address;
+        session.send(`DEBUG: Hello!  Your user ID is ${address.from.id}`);
+
+        if (address.channelId.toLowerCase() === "slack") {
+            session.send("DEBUG: I see that you're on a slack endpoint!");
+            var messageInfo = address.conversation.id.split(':');
+            if (messageInfo.length <= 2) {
+                session.send("DEBUG: Error, conversation ID was in an unexpected format");
+            } else {
+                var channelId = messageInfo[2];
+                var teamId = messageInfo[1];
+                var text = address.text;
+                session.send(`DEBUG: You typed ${text}, your user ID is ${address.from.id}, your channel is ${channelId}, and your team is ${teamId}`);
+                if (channelId.charAt(0) === 'D') {
+                    session.send(`DEBUG: This message was sent as a DM`);
+                } else if (channelId.char(0) === 'C') {
+                    session.send(`DEBUG: This message was sent in a channel`);
+                } else {
+                    session.send(`DEBUG: This message was sent in neither a channel nor a DM`);
+                }
+            } 
+        } else if (address.channelId.toLowerCase() === "emulator") {
+            session.send("DEBUG: I see that you're on an emulator endpoint!");
+        }
+        session.send(`Debug info: your channel ID is ${address.conversation.id} and your messaging type is ${address.channelId}`);
+    }
+    if (session.message.text.toLowerCase().indexOf("draftbot") > -1) {
+        session.send("Welcome to draft bot 7000!  Here's some useful info: lorem ipsum etc");
+    }
+    session.endDialog();
+});
