@@ -57,7 +57,7 @@ require('./hello.js')(bot, builder);
 
 // fallback handler
 bot.dialog('/', function(session) {
-    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId && session.message.address.recipient) {
+    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId) {
         var address = session.message.address;
         session.send(`DEBUG: Hello!  Your user ID is ${session.message.user.id}`);
 
@@ -69,8 +69,6 @@ bot.dialog('/', function(session) {
             } else {
                 var channelId = messageInfo[2];
                 var teamId = messageInfo[1];
-                var myId = "@" + address.recipient.name;
-                myId = myId.toLowerCase();
                 var text = session.message.text;
                 session.send(`DEBUG: You typed ${text}, your user ID is ${session.message.user.id}, your channel is ${channelId}, and your team is ${teamId}`);
                 if (channelId.charAt(0) === 'D') {
@@ -80,7 +78,7 @@ bot.dialog('/', function(session) {
                 } else {
                     session.send(`DEBUG: This message was sent in neither a channel nor a DM`);
                 }
-                if (text.toLowerCase().indexOf(myId) > -1) {
+                if (session.message.entities && session.message.entities.length > 0 && session.message.entities[0].mentioned && session.message.entities[0].mentioned.name === "azurebot") {
                     session.send("DEBUG: you mentioned me");
                 } else {
                     session.send("DEBUG: you did not mention me");
