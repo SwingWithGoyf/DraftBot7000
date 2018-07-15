@@ -1,12 +1,16 @@
 {
+    "parserOptions": {
+        "ecmaVersion": 6
+    },
     "rules": {
         "indent": [
             2,
-            2
+            4
         ],
         "quotes": [
             2,
-            "single"
+            "single",
+            {"allowTemplateLiterals": true}
         ],
         "linebreak-style": [
             2,
@@ -16,7 +20,8 @@
             2,
             "always"
         ],
-        "no-console":"off"
+        "no-console":"off",
+        "no-useless-concat":"warn"
     },
     "env": {
         "mocha": false,
