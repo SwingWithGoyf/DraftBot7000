@@ -16,7 +16,7 @@ module.exports = function(bot, builder) {
         function (session, results) {
             var command = results.response.entity;
             
-            switch(command)
+            switch (command)
             {
             case 'Add draft':
                 session.beginDialog('addDraft');
@@ -57,7 +57,7 @@ module.exports = function(bot, builder) {
             } 
         },
         function(session, results){
-            if(results.response){
+            if (results.response){
                 session.userData.players = results.response;
                 var msg = 'Thank you. Created draft ' + session.userData.draftName + ' with players ' + session.userData.players;
                 session.endDialog(msg);
@@ -71,10 +71,14 @@ module.exports = function(bot, builder) {
 
     bot.dialog('deleteDraft', [
         function(session) {
-            session.send('Alright, let\'s remove a draft!');
-            // code to look up drafts in storage and offer a choice goes here
-            //builder.Prompts.text('Not implemented yet, say whatever you want :P');
-            session.endDialog('Not implemented yet!');
+            if (!helper.CheckMessage(session)) {
+                session.send('Alright, let\'s remove a draft!');
+                // code to look up drafts in storage and offer a choice goes here
+                //builder.Prompts.text('Not implemented yet, say whatever you want :P');
+                session.endDialog('Not implemented yet!');
+            } else {
+                session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
+            }
         }
         //       builder.Prompts.text(session, 'What would you like to name the draft?');
         //     },

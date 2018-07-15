@@ -4,7 +4,6 @@ A simple echo bot for the Microsoft Bot Framework.
 var restify = require('restify');
 var builder = require('botbuilder');
 var botbuilder_azure = require('botbuilder-azure');
-//var azure = require('azure-storage');
 var helper = require('./helpers.js');
 var config = require('./config.js');
 
@@ -36,23 +35,6 @@ server.post('/api/messages', connector.listen());
 var tableName = 'botdata';
 var azureTableClient = new botbuilder_azure.AzureTableClient(tableName, process.env['AzureWebJobsStorage']);
 var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azureTableClient);
-//var tableSvc = azure.createTableService("DefaultEndpointsProtocol=https;AccountName=cs42764b8a75a82x4a0bx95f;AccountKey=SXmidOGCxdQC8PQnDs5YUlurZT/guHRdZkdi91N9JIqI49COjpZ2lwvHbqxigOvaNFqKG315oGASfUpljw46Fw==;EndpointSuffix=core.windows.net");
-// tableSvc.createTableIfNotExists('mytable',function(error, result, response) {
-//     if(!error) {
-//         console.log("yay table created!");
-//         var task = {
-//             PartitionKey: {'_':'hometasks'},
-//             RowKey: {'_': '2'},
-//             description: {'_':'take out the trash'},
-//             dueDate: {'_':new Date(2015, 6, 20), '$':'Edm.DateTime'}
-//         };
-//         tableSvc.insertOrMergeEntity('mytable',task, function (error, result, response) {
-//             if(!error){
-//               console.log("yay row inserted!");
-//             }
-//         });
-//     }
-// });
 
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot(connector).set('storage', tableStorage);
@@ -108,7 +90,7 @@ bot.dialog('/', [
     function (session, results) {
         var command = results.response.entity;
         
-        switch(command)
+        switch (command)
         {
         case 'Drafts':
             session.beginDialog('draftManagement');

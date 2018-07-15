@@ -10,7 +10,7 @@ module.exports = function(bot, builder) {
         function (session, results) {
             var command = results.response.entity;
             
-            switch(command)
+            switch (command)
             {
             case 'Add player':
                 session.beginDialog('addPlayer');

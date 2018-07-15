@@ -11,7 +11,7 @@ module.exports = function(bot, builder) {
         function (session, results) {
             var command = results.response.entity;
             
-            switch(command)
+            switch (command)
             {
             case 'Add rare':
                 session.beginDialog('addRare');

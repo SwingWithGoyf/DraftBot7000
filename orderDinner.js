@@ -30,7 +30,7 @@ module.exports = function(bot, builder) {
             } 
         },
         function(session, results){
-            if(results.response){
+            if (results.response){
                 session.userData.room = results.response;
                 var msg = 'Thank you. Your order will be delivered to room #' + session.userData.room;
                 session.endDialog(msg);

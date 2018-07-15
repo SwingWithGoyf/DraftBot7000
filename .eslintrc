@@ -3,6 +3,7 @@
         "ecmaVersion": 6
     },
     "rules": {
+        "curly": "error",
         "indent": [
             2,
             4
@@ -20,8 +21,8 @@
             2,
             "always"
         ],
-        "no-console":"off",
-        "no-useless-concat":"warn"
+        "keyword-spacing":"error",
+        "no-console":"off"
     },
     "env": {
         "mocha": false,
