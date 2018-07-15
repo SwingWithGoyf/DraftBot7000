@@ -1,10 +1,11 @@
 /*-----------------------------------------------------------------------------
 A simple echo bot for the Microsoft Bot Framework. 
 -----------------------------------------------------------------------------*/
-
 var restify = require('restify');
 var builder = require('botbuilder');
 var botbuilder_azure = require("botbuilder-azure");
+var azure = require('azure-storage');
+var helper = require('./helpers.js');
 
 // Setup Restify Server
 var server = restify.createServer();
@@ -31,6 +32,23 @@ server.post('/api/messages', connector.listen());
 var tableName = 'botdata';
 var azureTableClient = new botbuilder_azure.AzureTableClient(tableName, process.env['AzureWebJobsStorage']);
 var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azureTableClient);
+//var tableSvc = azure.createTableService("DefaultEndpointsProtocol=https;AccountName=cs42764b8a75a82x4a0bx95f;AccountKey=SXmidOGCxdQC8PQnDs5YUlurZT/guHRdZkdi91N9JIqI49COjpZ2lwvHbqxigOvaNFqKG315oGASfUpljw46Fw==;EndpointSuffix=core.windows.net");
+// tableSvc.createTableIfNotExists('mytable',function(error, result, response) {
+//     if(!error) {
+//         console.log("yay table created!");
+//         var task = {
+//             PartitionKey: {'_':'hometasks'},
+//             RowKey: {'_': '2'},
+//             description: {'_':'take out the trash'},
+//             dueDate: {'_':new Date(2015, 6, 20), '$':'Edm.DateTime'}
+//         };
+//         tableSvc.insertOrMergeEntity('mytable',task, function (error, result, response) {
+//             if(!error){
+//               console.log("yay row inserted!");
+//             }
+//         });
+//     }
+// });
 
 // Create your bot with a function to receive messages from the user
 var bot = new builder.UniversalBot(connector).set('storage', tableStorage);
@@ -56,40 +74,25 @@ require('./orderDinner.js')(bot, builder);
 require('./hello.js')(bot, builder);
 
 // fallback handler
-bot.dialog('/', function(session) {
-    if (session.message && session.message.address && session.message.address.conversation && session.message.address.channelId) {
-        var address = session.message.address;
-        session.send(`DEBUG: Hello!  Your user ID is ${session.message.user.id}`);
-
-        if (address.channelId.toLowerCase() === "slack") {
-            session.send("DEBUG: I see that you're on a slack endpoint!");
-            var messageInfo = address.conversation.id.split(':');
-            if (messageInfo.length <= 2) {
-                session.send("DEBUG: Error, conversation ID was in an unexpected format");
-            } else {
-                var channelId = messageInfo[2];
-                var teamId = messageInfo[1];
-                var text = session.message.text;
-                session.send(`DEBUG: You typed ${text}, your user ID is ${session.message.user.id}, your channel is ${channelId}, and your team is ${teamId}`);
-                if (channelId.charAt(0) === 'D') {
-                    session.send(`DEBUG: This message was sent as a DM`);
-                } else if (channelId.charAt(0) === 'C') {
-                    session.send(`DEBUG: This message was sent in a channel`);
-                } else {
-                    session.send(`DEBUG: This message was sent in neither a channel nor a DM`);
-                }
-                if (session.message.entities && session.message.entities.length > 0 && session.message.entities[0].mentioned && session.message.entities[0].mentioned.name === "azurebot") {
-                    session.send("DEBUG: you mentioned me");
-                } else {
-                    session.send("DEBUG: you did not mention me");
-                }
-            } 
-        } else if (address.channelId.toLowerCase() === "emulator") {
-            session.send("DEBUG: I see that you're on an emulator endpoint!");
+bot.dialog('/', [
+    function(session) {
+        helper.CheckMessage(session);
+        builder.Prompts.choice(session, "Welcome to draft bot 7000!  Here's the commands I support:", ["Add draft", "List draft", "List rares", "Add result"]);
+    },
+    function (session, results) {
+        var command = results.response.entity;
+        switch(command)
+        {
+            case "Add draft":
+                break;
+            case "List draft":
+                break;
+            case "List rares":
+                break;
+            case "Add result":
+                break;
         }
-        session.send(`Debug info: your channel ID is ${address.conversation.id} and your messaging type is ${address.channelId}`);
+        var msg = `You picked ${command}`;
+        session.endDialog(msg);
     }
-
-    session.send("Welcome to draft bot 7000!  Here's some useful info: lorem ipsum etc");
-    session.endDialog();
-});
+]);
