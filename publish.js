@@ -17,20 +17,20 @@ function uploadZip(callback) {
       sendImmediately: true
     },
     headers: {
-      "Content-Type": "applicaton/zip"
+      'Content-Type': 'applicaton/zip'
     }
   }))
-  .on('response', function(resp){
-    if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      fs.unlink(zipPath);
-      callback(null);
-    } else if (resp.statusCode >= 400) {
-      callback(resp);
-    }
-  })
-  .on('error', function(err) {
-    callback(err)
-  });
+    .on('response', function(resp){
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        fs.unlink(zipPath);
+        callback(null);
+      } else if (resp.statusCode >= 400) {
+        callback(resp);
+      }
+    })
+    .on('error', function(err) {
+      callback(err);
+    });
 }
 
 function publish(callback) {
@@ -40,7 +40,7 @@ function publish(callback) {
     } else {
       callback(err);
     }
-  })
+  });
 }
 
 publish(function(err) {

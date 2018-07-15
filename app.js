@@ -3,21 +3,21 @@ A simple echo bot for the Microsoft Bot Framework.
 -----------------------------------------------------------------------------*/
 var restify = require('restify');
 var builder = require('botbuilder');
-var botbuilder_azure = require("botbuilder-azure");
-var azure = require('azure-storage');
+var botbuilder_azure = require('botbuilder-azure');
+//var azure = require('azure-storage');
 var helper = require('./helpers.js');
 
 // Setup Restify Server
 var server = restify.createServer();
 server.listen(process.env.port || process.env.PORT || 8000, function () {
-   console.log('%s listening to %s', server.name, server.url); 
+  console.log('%s listening to %s', server.name, server.url); 
 });
   
 // Create chat connector for communicating with the Bot Framework Service
 var connector = new builder.ChatConnector({
-    appId: process.env.MicrosoftAppId,
-    appPassword: process.env.MicrosoftAppPassword,
-    openIdMetadata: process.env.BotOpenIdMetadata 
+  appId: process.env.MicrosoftAppId,
+  appPassword: process.env.MicrosoftAppPassword,
+  openIdMetadata: process.env.BotOpenIdMetadata 
 });
 
 // Listen for messages from users 
@@ -54,10 +54,10 @@ var tableStorage = new botbuilder_azure.AzureBotStorage({ gzipData: false }, azu
 var bot = new builder.UniversalBot(connector).set('storage', tableStorage);
 
 // The dialog stack is cleared and this dialog is invoked when the user enters 'help'.
-bot.dialog('help', function (session, args, next) {
-    session.endDialog("This is a bot that can help you be a better herf derf. <br/>Currently supported commands are 'hello' and 'order dinner'");
+bot.dialog('help', function (session) {
+  session.endDialog('This is a bot that can help you be a better herf derf. <br/>Currently supported commands are \'hello\' and \'order dinner\'');
 })
-.triggerAction({
+  .triggerAction({
     matches: /^help$/i
     // ,
     // onSelectAction: (session, args, next) => {
@@ -65,7 +65,7 @@ bot.dialog('help', function (session, args, next) {
     //     // (override the default behavior of replacing the stack)
     //     session.beginDialog(args.action, args);
     // }
-});
+  });
 
 // order dinner command
 require('./orderDinner.js')(bot, builder);
@@ -73,26 +73,35 @@ require('./orderDinner.js')(bot, builder);
 // hello commands
 require('./hello.js')(bot, builder);
 
+// add draft commands
+require('./addDraft.js')(bot, builder);
+
 // fallback handler
 bot.dialog('/', [
-    function(session) {
-        helper.CheckMessage(session);
-        builder.Prompts.choice(session, "Welcome to draft bot 7000!  Here's the commands I support:", ["Add draft", "List draft", "List rares", "Add result"]);
-    },
-    function (session, results) {
-        var command = results.response.entity;
-        switch(command)
-        {
-            case "Add draft":
-                break;
-            case "List draft":
-                break;
-            case "List rares":
-                break;
-            case "Add result":
-                break;
-        }
-        var msg = `You picked ${command}`;
-        session.endDialog(msg);
+  function(session) {
+    helper.CheckMessage(session);
+    builder.Prompts.choice(session, 'Welcome to draft bot 7000!  Here\'s the commands I support:', ['Add draft', 'List draft', 'List rares', 'Add result']);
+  },
+  function (session, results) {
+    var command = results.response.entity;
+        
+    switch(command)
+    {
+    case 'Add draft':
+      session.beginDialog('addDraft');
+      break;
+    case 'List draft':
+      session.send('Not implemented!');
+      break;
+    case 'List rares':
+      session.send('Not implemented!');
+      break;
+    case 'Add result':
+      session.send('Not implemented!');
+      break;
     }
+  },
+  function (session) {
+    session.send('Done!');
+  }
 ]);
