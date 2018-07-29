@@ -1,5 +1,6 @@
 module.exports = function(bot, builder) {
     var helper = require('./helpers.js');
+    var dataOps = require('./dataOperations.js');
     bot.dialog('draftManagement', [
         function(session) {
             if (!helper.CheckMessage(session)) {
@@ -59,6 +60,7 @@ module.exports = function(bot, builder) {
         function(session, results){
             if (results.response){
                 session.userData.players = results.response;
+                dataOps.AddDraftObj(helper.GetTeamId(session), session.userData.draftName);
                 var msg = 'Thank you. Created draft ' + session.userData.draftName + ' with players ' + session.userData.players;
                 session.endDialog(msg);
             }
@@ -103,10 +105,21 @@ module.exports = function(bot, builder) {
 
     bot.dialog('listDraft', [
         function(session) {
-            session.send('Alright, let\'s list a draft!');
-            // code to look up drafts in storage and offer a choice goes here
-            //builder.Prompts.text('Not implemented yet, say whatever you want :P');
-            session.endDialog('Not implemented yet!');
+            if (!helper.CheckMessage(session)) {
+                session.send('Here are the drafts I know about:');
+
+                dataOps.GetDraftList(helper.GetTeamId(session), function(draftResults) {
+                    var draftResultOutput = '';
+
+                    for (var i = 0; i < draftResults.length; i++) {
+                        draftResultOutput += `${draftResults[i].PartitionKey._}: ${draftResults[i].RowKey._}\n\n`;
+                    }
+                    session.send(draftResultOutput);
+                    session.endDialog();
+                });
+            } else {
+                session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
+            }
         }
         //       builder.Prompts.text(session, 'What would you like to name the draft?');
         //     },

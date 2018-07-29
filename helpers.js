@@ -1,3 +1,5 @@
+var theTeamId = '';
+
 function CheckMessage(session) {
     var shouldSquelch = true;
     var dataOps = require('./dataOperations.js');
@@ -18,9 +20,9 @@ function CheckMessage(session) {
                 session.send('DEBUG: You\'re on a slack endpoint, you typed ' + text + ', your user ID is ' + session.message.user.id + ', your channel is ' + 
                     channelId + ', and your team is ' + teamId);
                 session.userData.teamId = teamId;
+                theTeamId = teamId;
                 session.userData.userId = session.message.user.id.replace(`:${teamId}`, '');
-                dataOps.CreateTableIfNotExists(`${teamId}Drafts`);
-                dataOps.CreateTableIfNotExists(`${teamId}Users`);
+                dataOps.CreateTables(teamId);
                 if (channelId.charAt(0) === 'D') {
                     session.send('DEBUG: This message was sent as a DM');
                     shouldSquelch = false;
@@ -45,11 +47,19 @@ function CheckMessage(session) {
                 session.send('DEBUG: You did not mention me');
             }
         }
-        //session.send('Debug info: your channel ID is ' + address.conversation.id + ' and your messaging type is ' + address.channelId);
+        
         return shouldSquelch;
     }
 }
 
+function GetTeamId(session) {
+    if (theTeamId === '') {
+        theTeamId = session.userData.teamId;
+    }
+    return theTeamId;
+}
+
 module.exports = {
-    CheckMessage: CheckMessage
+    CheckMessage: CheckMessage,
+    GetTeamId: GetTeamId
 };
