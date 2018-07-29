@@ -37,6 +37,18 @@ function InsertOrMergeEntity(task, tableName, callback) {
     });
 }
 
+function MergeEntity(task, tableName, callback) {
+    tableSvc.mergeEntity(tableName, task, function (error, result, response) {
+        if (!error && result) {
+            console.log('row merged');
+            if (response && response.statusCode) {
+                console.log(`Response code: ${response.statusCode}`);
+            }
+        }
+        callback(error);
+    });
+}
+
 // function RetrieveEntity(tableName, partitionKey, rowKey) {
 //     tableSvc.retrieveEntity(tableName, partitionKey, rowKey, function (error, result, response) {
 //         if (!error && result) {
@@ -59,7 +71,6 @@ function QueryEntities(tableName, query, callback) {
             if (response && response.statusCode) {
                 console.log(`Response code: ${response.statusCode}`);
             }
-
             callback(result.entries, error);
         } else {
             console.log('query had an error!');
@@ -186,34 +197,105 @@ function GetDraftList(teamId, callback) {
     });
 }
 
+function GetPlayerById(teamId, playerId, callback) {
+    var query = new azure.TableQuery()
+        .where('PartitionKey eq ?', playerId)
+        .top(1);
+
+    QueryEntities(`${teamId}Users`, query, function(results, error) {
+        if (!error) {
+            console.log('Get player by id successful!');
+            callback(results, error);
+        } else {
+            console.log('Get player by id hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
+function GetPlayerDraftMappingById(teamId, draftId, playerId, callback) {
+    var filter1 = azure.TableQuery.stringFilter('PartitionKey', azure.TableUtilities.QueryComparisons.EQUAL, String(draftId));
+    var filter2 = azure.TableQuery.stringFilter('RowKey', azure.TableUtilities.QueryComparisons.EQUAL, playerId);
+    var finalFilter = azure.TableQuery.combineFilters(filter1, azure.TableUtilities.TableOperators.AND, filter2);
+    var query = new azure.TableQuery()
+        .where(finalFilter)
+        .top(1);
+
+    QueryEntities(`${teamId}DraftUsers`, query, function(results, error) {
+        if (!error) {
+            console.log('Get player draft mapping successful!');
+            callback(results, error);
+        } else {
+            console.log('Get player draft mapping hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
 function AddPlayer(teamId, playerId, playerName, draftId, callback) {
     var entGen = azure.TableUtilities.entityGenerator;
     var playerTask = {
         PartitionKey: entGen.String(playerId),
-        RowKey: entGen.String(playerName)
+        RowKey: entGen.String(playerId),
+        playerName: entGen.String(playerName)
     };
 
-    InsertOrMergeEntity(playerTask, `${teamId}Users`, function(error) {
-        if (!error) {
-            console.log('Created and/or updated user successfully in Users table!');
-            var draftPlayerTask = {
-                PartitionKey: entGen.String(String(draftId)),
-                RowKey: entGen.String(playerId)
-            };
-            InsertOrMergeEntity(draftPlayerTask, `${teamId}DraftUsers`, function(error) {
-                if (!error) {
-                    console.log('Created and/or updated user-draft mapping in DraftUsers table!');
-                } else {
-                    console.log('Something went wrong trying to insert in DraftUsers table!');
-                    console.log(error);
-                }
-                callback(error);
-            });
+    // Check if the player entry is already present, if so, update, otherwise, insert
+    GetPlayerById(teamId, playerId, function(results, error) {
+        if (!error)
+        {
+            if (results.length > 0) {
+                MergeEntity(playerTask, `${teamId}Users`, function(error) {
+                    if (!error) {
+                        console.log('Updated user successfully in Users table!');
+                        var draftPlayerTask = {
+                            PartitionKey: entGen.String(String(draftId)),
+                            RowKey: entGen.String(playerId)
+                        };
+                        InsertOrMergeEntity(draftPlayerTask, `${teamId}DraftUsers`, function(error) {
+                            if (!error) {
+                                console.log('Created and/or updated user-draft mapping in DraftUsers table!');
+                            } else {
+                                console.log('Something went wrong trying to insert in DraftUsers table!');
+                                console.log(error);
+                            }
+                            callback(error);
+                        });
+                    } else {
+                        console.log('Something went wrong trying to insert in Users table!');
+                        console.log(error);
+                        callback(error);
+                    }
+                });
+            } else {
+                InsertOrMergeEntity(playerTask, `${teamId}Users`, function(error) {
+                    if (!error) {
+                        console.log('Created and/or updated user successfully in Users table!');
+                        var draftPlayerTask = {
+                            PartitionKey: entGen.String(String(draftId)),
+                            RowKey: entGen.String(playerId)
+                        };
+                        InsertOrMergeEntity(draftPlayerTask, `${teamId}DraftUsers`, function(error) {
+                            if (!error) {
+                                console.log('Created and/or updated user-draft mapping in DraftUsers table!');
+                            } else {
+                                console.log('Something went wrong trying to insert in DraftUsers table!');
+                                console.log(error);
+                            }
+                            callback(error);
+                        });
+                    } else {
+                        console.log('Something went wrong trying to insert in Users table!');
+                        console.log(error);
+                        callback(error);
+                    }
+                });
+            }
         } else {
-            console.log('Something went wrong trying to insert in Users table!');
-            console.log(error);
-            callback(error);
-        }
+            console.log('Something went wrong trying to query from Users table!');
+        }    
     });
 }
 
@@ -223,6 +305,7 @@ module.exports = {
     GetSingleDraftObj: GetSingleDraftObj,
     GetDefaultDraftObj: GetDefaultDraftObj,
     GetDraftList: GetDraftList,
+    GetPlayerDraftMappingById: GetPlayerDraftMappingById,
     DeleteDraftObj: DeleteDraftObj,
     AddPlayer: AddPlayer
 };

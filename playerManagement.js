@@ -46,38 +46,44 @@ module.exports = function(bot, builder) {
         function(session) {
             if (!helper.CheckMessage(session)) {
                 session.send('Alright, let\'s add you as a player!');
+                //TODO: more sophisticated logic for user name (I currently have 'foo' stored for your nickname, is this okay?)
+                builder.Prompts.text(session, 'What should I call you?');
+            } else {
+                session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
+            }
+        },
+        function (session, results) {
+            if (results.response) {
+                var userName = results.response;
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         var defaultDraftId = draftResults[0].PartitionKey._;
-                        //TODO: prompt user for user name
-                        dataOps.AddPlayer(helper.GetTeamId(session), helper.GetUserId(session), 'Magoo', defaultDraftId, function(error) {
+                        dataOps.GetPlayerDraftMappingById(helper.GetTeamId(session), defaultDraftId, helper.GetUserId(session), function(results, error) {
                             if (!error) {
-                                session.endConversation('Successfully added you to the default draft!');
+                                var userExisted = false;
+                                if (results && results.length > 0) {
+                                    userExisted = true;
+                                }
+                                dataOps.AddPlayer(helper.GetTeamId(session), helper.GetUserId(session), userName, defaultDraftId, function(error) {
+                                    if (!error) {
+                                        if (userExisted) {
+                                            session.endConversation('You were already part of the default draft!');
+                                        } else {
+                                            session.endConversation('Successfully added you to the default draft!');
+                                        }
+                                    } else {
+                                        session.endConversation(`Something went wrong adding player, contact tech support!`);
+                                    }
+                                });
                             } else {
-                                session.endConversation(`Something went wrong, contact tech support!`);
+                                session.endConversation(`Something went wrong querying draft-user mapping, contact tech support!`);
                             }
                         });
                     } else {
                         session.endConversation('Couldn\'t get default draft, consult tech support!');
                     }
-                    
                 });
-            } else {
-                session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
             }
-        // },
-        // function (session, results) {
-        //     if (results.response) {
-        //         session.userData.draftName = results.response;
-        //         builder.Prompts.text(session, 'Specify a comma delimited list of players to play in the draft (or type \'default\' to add the default crew');
-        //     } 
-        // },
-        // function(session, results){
-        //     if(results.response){
-        //         session.userData.players = results.response;
-        //         var msg = 'Thank you. Created draft ' + session.userData.draftName + ' with players ' + session.userData.players;
-        //         session.endDialog(msg);
-        //     }
         }
     ])
         .triggerAction({
