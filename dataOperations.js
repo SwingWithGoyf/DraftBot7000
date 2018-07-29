@@ -20,31 +20,36 @@ function CreateTableIfNotExists(tableName) {
     });
 }
 
-function InsertOrMergeEntity(task, tableName) {
+function InsertOrMergeEntity(task, tableName, callback) {
     tableSvc.insertOrMergeEntity(tableName, task, function (error, result, response) {
         if (!error && result) {
-            console.log('row inserted');
+            if (result.created) {
+                console.log('row inserted');
+            } else {
+                console.log('row updated');
+            }
             
             if (response && response.statusCode) {
                 console.log(`Response code: ${response.statusCode}`);
             }
         }
+        callback(error);
     });
 }
 
-function RetrieveEntity(tableName, partitionKey, rowKey) {
-    tableSvc.retrieveEntity(tableName, partitionKey, rowKey, function (error, result, response) {
-        if (!error && result) {
-            console.log('row retrieved');
+// function RetrieveEntity(tableName, partitionKey, rowKey) {
+//     tableSvc.retrieveEntity(tableName, partitionKey, rowKey, function (error, result, response) {
+//         if (!error && result) {
+//             console.log('row retrieved');
             
-            if (response && response.statusCode) {
-                console.log(`Response code: ${response.statusCode}`);
-            }
+//             if (response && response.statusCode) {
+//                 console.log(`Response code: ${response.statusCode}`);
+//             }
 
-            return result;
-        }
-    });
-}
+//             return result;
+//         }
+//     });
+// }
 
 function QueryEntities(tableName, query, callback) {
     tableSvc.queryEntities(tableName, query, null, function (error, result, response) {
@@ -55,30 +60,101 @@ function QueryEntities(tableName, query, callback) {
                 console.log(`Response code: ${response.statusCode}`);
             }
 
-            callback(result.entries);
+            callback(result.entries, error);
+        } else {
+            console.log('query had an error!');
+            console.log(error);
+            callback(null, error);
         }
+    });
+}
+
+function DeleteEntity(task, tableName, callback) {
+    tableSvc.deleteEntity(tableName, task, function(error, response){
+        if (!error) {
+            console.log('Item deleted!');
+        }
+
+        if (response && response.statusCode) {
+            console.log(`Response code: ${response.statusCode}`);
+        }
+        callback(error);
     });
 }
 
 function CreateTables(teamId) {
     CreateTableIfNotExists(`${teamId}Drafts`);
     CreateTableIfNotExists(`${teamId}Users`);
+    CreateTableIfNotExists(`${teamId}DraftUsers`);
 }
 
-function AddDraftObj(teamId, draftName) {
+function AddDraftObj(teamId, draftName, callback) {
     GetMaxDraftId(teamId, function(maxDraftId) {
+        var entGen = azure.TableUtilities.entityGenerator;
+        var newDraftId = Number(maxDraftId) + 1;
+        var isDefault = (newDraftId === 0); // first draft is default draft, subsequent drafts are not by default
         var task = {
-            PartitionKey: {'_':String(Number(maxDraftId) + 1)},
-            RowKey: {'_':draftName},
-            draftData: {'_':''}
+            PartitionKey: entGen.String(String(newDraftId)),
+            RowKey: entGen.String(draftName),
+            isDefault: entGen.Boolean(isDefault)
         };
 
-        InsertOrMergeEntity(task, `${teamId}Drafts`);
+        InsertOrMergeEntity(task, `${teamId}Drafts`, function(error) {
+            callback(error);
+        });
     });
 }
 
-function GetSingleDraftObj(draftId, teamId) {
-    return RetrieveEntity(`${teamId}Drafts`, draftId, 1);
+function DeleteDraftObj(teamId, draftId, callback) {
+    GetSingleDraftObj(teamId, draftId, function(draftResults) {
+        var task = {
+            PartitionKey: draftId,
+            RowKey: draftResults[0].RowKey._
+        };
+
+        DeleteEntity(task, `${teamId}Drafts`, function(error) {
+            if (!error) {
+                console.log('Delete draft obj successful!');
+            } else {
+                console.log('Something went wrong trying to delete draft obj!');
+            }
+            callback(error);
+        });
+    });    
+}
+
+function GetSingleDraftObj(teamId, draftId, callback) {
+    var query = new azure.TableQuery()
+        .where('PartitionKey eq ?', draftId)
+        .top(1);
+    
+    QueryEntities(`${teamId}Drafts`, query, function(results, error) {
+        if (!error) {
+            console.log('Get draft by ID successful!');
+            callback(results, error);
+        } else {
+            console.log('Get draft by ID hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
+function GetDefaultDraftObj(teamId, callback) {
+    var query = new azure.TableQuery()
+        .where('isDefault eq ?bool?', true)
+        .top(1);
+    
+    QueryEntities(`${teamId}Drafts`, query, function(results, error) {
+        if (!error) {
+            console.log('Get default draft successful!');
+            callback(results, error);
+        } else {
+            console.log('Get default draft hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
 }
 
 function GetMaxDraftId(teamId, callback) {
@@ -98,12 +174,55 @@ function GetDraftList(teamId, callback) {
     var query = new azure.TableQuery()
         .top(100);
 
-    return QueryEntities(`${teamId}Drafts`, query, callback);
+    QueryEntities(`${teamId}Drafts`, query, function(results, error) {
+        if (!error) {
+            console.log('Get draft list successful!');
+            callback(results, error);
+        } else {
+            console.log('Get draft list hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
+function AddPlayer(teamId, playerId, playerName, draftId, callback) {
+    var entGen = azure.TableUtilities.entityGenerator;
+    var playerTask = {
+        PartitionKey: entGen.String(playerId),
+        RowKey: entGen.String(playerName)
+    };
+
+    InsertOrMergeEntity(playerTask, `${teamId}Users`, function(error) {
+        if (!error) {
+            console.log('Created and/or updated user successfully in Users table!');
+            var draftPlayerTask = {
+                PartitionKey: entGen.String(String(draftId)),
+                RowKey: entGen.String(playerId)
+            };
+            InsertOrMergeEntity(draftPlayerTask, `${teamId}DraftUsers`, function(error) {
+                if (!error) {
+                    console.log('Created and/or updated user-draft mapping in DraftUsers table!');
+                } else {
+                    console.log('Something went wrong trying to insert in DraftUsers table!');
+                    console.log(error);
+                }
+                callback(error);
+            });
+        } else {
+            console.log('Something went wrong trying to insert in Users table!');
+            console.log(error);
+            callback(error);
+        }
+    });
 }
 
 module.exports = {
     CreateTables: CreateTables,
     AddDraftObj: AddDraftObj,
     GetSingleDraftObj: GetSingleDraftObj,
-    GetDraftList: GetDraftList
+    GetDefaultDraftObj: GetDefaultDraftObj,
+    GetDraftList: GetDraftList,
+    DeleteDraftObj: DeleteDraftObj,
+    AddPlayer: AddPlayer
 };

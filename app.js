@@ -44,7 +44,7 @@ bot.dialog('quit', function (session) {
     session.endConversation('Ok, nevermind!');
 })
     .triggerAction({
-        matches: [/^q$/i, /^quit$/i],
+        matches: [/^^(@\S*\s)*q$/i, /^^(@\S*\s)*quit$/i],
         confirmPrompt: 'This will cancel the current operation. Are you sure?'
     });
 

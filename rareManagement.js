@@ -32,7 +32,7 @@ module.exports = function(bot, builder) {
         }
     ])
         .triggerAction({
-            matches: [/^rares*$/i],
+            matches: [/^(@\S+\s)*rares*$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
     
@@ -57,7 +57,7 @@ module.exports = function(bot, builder) {
         }
     ])
         .triggerAction({
-            matches: [/^add rares*$/i],
+            matches: [/^(@\S+\s)*add rares*$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 
@@ -85,7 +85,7 @@ module.exports = function(bot, builder) {
         //     }
     ])
         .triggerAction({
-            matches: [/^delete rares*$/i],
+            matches: [/^(@\S+\s)*delete rares*$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 
@@ -114,7 +114,7 @@ module.exports = function(bot, builder) {
         //     }
     ])
         .triggerAction({
-            matches: [/^delete player$/i, /^remove player$/i],
+            matches: [/^(@\S+\s)*delete player$/i, /^(@\S+\s)*remove player$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 
@@ -143,7 +143,7 @@ module.exports = function(bot, builder) {
         //     }
     ])
         .triggerAction({
-            matches: [/^redraft$/i],
+            matches: [/^(@\S+\s)*redraft$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 };

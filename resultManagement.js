@@ -24,7 +24,7 @@ module.exports = function(bot, builder) {
         }
     ])
         .triggerAction({
-            matches: [/^results*$/i],
+            matches: [/^(@\S+\s)*results*$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 
@@ -49,7 +49,7 @@ module.exports = function(bot, builder) {
         }
     ])
         .triggerAction({
-            matches: [/^add results*$/i],
+            matches: [/^(@\S+\s)*add results*$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 
@@ -77,7 +77,7 @@ module.exports = function(bot, builder) {
         //     }
     ])
         .triggerAction({
-            matches: [/^standings*$/i],
+            matches: [/^(@\S+\s)*standings*$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 };

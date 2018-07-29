@@ -17,8 +17,12 @@ function CheckMessage(session) {
                 var channelId = messageInfo[2];
                 var teamId = messageInfo[1];
                 var text = session.message.text;
-                session.send('DEBUG: You\'re on a slack endpoint, you typed ' + text + ', your user ID is ' + session.message.user.id + ', your channel is ' + 
-                    channelId + ', and your team is ' + teamId);
+
+                if (session.message.user && session.message.user.id && session.message.user.id.split(':').length >= 2) {
+                    session.userData.userId = session.message.user.id.split(':')[0];
+                    session.send('DEBUG: You\'re on a slack endpoint, you typed ' + text + ', your user ID is ' + session.userData.userId + ', your channel is ' + 
+                        channelId + ', and your team is ' + teamId);
+                }
                 session.userData.teamId = teamId;
                 theTeamId = teamId;
                 session.userData.userId = session.message.user.id.replace(`:${teamId}`, '');
@@ -59,7 +63,12 @@ function GetTeamId(session) {
     return theTeamId;
 }
 
+function GetUserId(session) {
+    return session.userData.userId;
+}
+
 module.exports = {
     CheckMessage: CheckMessage,
-    GetTeamId: GetTeamId
+    GetTeamId: GetTeamId,
+    GetUserId: GetUserId
 };
