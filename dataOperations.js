@@ -151,6 +151,23 @@ function GetSingleDraftObj(teamId, draftId, callback) {
     });
 }
 
+function GetSingleUserObj(teamId, userId, callback) {
+    var query = new azure.TableQuery()
+        .where('PartitionKey eq ?', userId)
+        .top(1);
+    
+    QueryEntities(`${teamId}Users`, query, function(results, error) {
+        if (!error) {
+            console.log('Get user by ID successful!');
+            callback(results, error);
+        } else {
+            console.log('Get user by ID hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
 function GetDefaultDraftObj(teamId, callback) {
     var query = new azure.TableQuery()
         .where('isDefault eq ?bool?', true)
@@ -303,6 +320,7 @@ module.exports = {
     CreateTables: CreateTables,
     AddDraftObj: AddDraftObj,
     GetSingleDraftObj: GetSingleDraftObj,
+    GetSingleUserObj: GetSingleUserObj,
     GetDefaultDraftObj: GetDefaultDraftObj,
     GetDraftList: GetDraftList,
     GetPlayerDraftMappingById: GetPlayerDraftMappingById,
