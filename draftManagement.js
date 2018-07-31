@@ -54,20 +54,52 @@ module.exports = function(bot, builder) {
         function (session, results) {
             if (results.response) {
                 session.userData.draftName = results.response;
-                builder.Prompts.text(session, 'Specify a comma delimited list of players to play in the draft (or type \'default\' to add the default crew');
+                dataOps.GetDraftByName(helper.GetTeamId(session), session.userData.draftName, function(results, error) {
+                    if (!error) {
+                        if (results) {
+                            if (results.length > 0) {
+                                session.endConversation('Error: there\'s already a draft with that name - aborting...');
+                            } else {
+                                builder.Prompts.choice(session, 'Would you like to add the \'default\' crew?', 'Yes|No');
+                            }
+                        }
+                    } else {
+                        session.endConversation('Error: could not get draft by name, contact tech support!');
+                    }
+                });                
             } 
         },
-        function(session, results){
-            if (results.response){
-                session.userData.players = results.response;
-                dataOps.AddDraftObj(helper.GetTeamId(session), session.userData.draftName, function(error) {
-                    if (!error) {
-                        session.endConversation(`Thank you. Created draft ${session.userData.draftName} with players ${session.userData.players}`);
-                    } else {
-                        session.endConversation(`Something went wrong, contact tech support!`);
-                    }
-                });
-            }
+        function(session, results) {
+            dataOps.AddDraftObj(helper.GetTeamId(session), session.userData.draftName, function(error) {
+                if (!error) {
+                    session.send(`Thank you. Created draft ${session.userData.draftName}`);
+                } else {
+                    session.endConversation(`Something went wrong with add draft, contact tech support!`);
+                }
+
+                if (results.response.entity === 'Yes') {
+                    dataOps.GetDraftByName(helper.GetTeamId(session), session.userData.draftName, function(results, error) {
+                        if (!error) {
+                            if (results && results.length > 0) {
+                                dataOps.AddDefaultCrew(helper.GetTeamId(session), results[0].PartitionKey._, function(error) {
+                                    if (!error) {
+                                        session.endConversation();
+                                    } else {
+                                        session.endConversation('Error: could not add default crew!');
+                                    }
+                                });
+                            } else {
+                                session.endConversation('Error: couldn\'t find draft that was just created, contact tech support!');
+                            }
+                        } else {
+                            session.endConversation('Error: something went wrong with get draft by name!');
+                        }
+                    });
+                } else {
+                    session.endConversation();
+                }
+
+            });
         }
     ])
         .triggerAction({

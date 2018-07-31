@@ -20,7 +20,7 @@ function CheckMessage(session) {
 
                 if (session.message.user && session.message.user.id && session.message.user.id.split(':').length >= 2) {
                     session.userData.userId = session.message.user.id.split(':')[0];
-                    session.send('DEBUG: You\'re on a slack endpoint, you typed ' + text + ', your user ID is ' + session.userData.userId + ', your channel is ' + 
+                    console.log('DEBUG: You\'re on a slack endpoint, you typed ' + text + ', your user ID is ' + session.userData.userId + ', your channel is ' + 
                         channelId + ', and your team is ' + teamId);
                 }
                 session.userData.teamId = teamId;
@@ -28,18 +28,23 @@ function CheckMessage(session) {
                 session.userData.userId = session.message.user.id.replace(`:${teamId}`, '');
                 dataOps.CreateTables(teamId);
                 if (channelId.charAt(0) === 'D') {
-                    session.send('DEBUG: This message was sent as a DM');
+                    //session.send('DEBUG: This message was sent as a DM');
+                    console.log('DEBUG: This message was sent as a DM');
                     shouldSquelch = false;
                 } else if (channelId.charAt(0) === 'C') {
-                    session.send('DEBUG: This message was sent in a channel');
+                    console.log('DEBUG: This message was sent in a channel');
+                    //session.send('DEBUG: This message was sent in a channel');
                 } else {
-                    session.send('DEBUG: This message was sent in neither a channel nor a DM');
+                    console.log('DEBUG: This message was sent in neither a channel nor a DM');
+                    //session.send('DEBUG: This message was sent in neither a channel nor a DM');
                 }
                 if (session.message.entities && session.message.entities.length > 0 && session.message.entities[0].mentioned && session.message.entities[0].mentioned.name === 'azurebot') {
-                    session.send('DEBUG: you mentioned me');
+                    //session.send('DEBUG: you mentioned me');
+                    console.log('DEBUG: you mentioned me');
                     shouldSquelch = false;
                 } else {
-                    session.send('DEBUG: you did not mention me');
+                    console.log('DEBUG: you did not mention me');
+                    //session.send('DEBUG: you did not mention me');
                 }
             } 
         } else if (address.channelId.toLowerCase() === 'emulator') {

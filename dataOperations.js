@@ -33,7 +33,7 @@ function InsertOrMergeEntity(task, tableName, callback) {
                 console.log(`Response code: ${response.statusCode}`);
             }
         }
-        callback(error);
+        callback(error, result);
     });
 }
 
@@ -110,7 +110,10 @@ function AddDraftObj(teamId, draftName, callback) {
             isDefault: entGen.Boolean(isDefault)
         };
 
-        InsertOrMergeEntity(task, `${teamId}Drafts`, function(error) {
+        InsertOrMergeEntity(task, `${teamId}Drafts`, function(error, result) {
+            if (!error) {
+                console.log(result);
+            }
             callback(error);
         });
     });
@@ -168,6 +171,23 @@ function GetSingleUserObj(teamId, userId, callback) {
     });
 }
 
+function GetUserByUserName(teamId, userName, callback) {
+    var query = new azure.TableQuery()
+        .where('playerName eq ?', userName)
+        .top(1);
+    
+    QueryEntities(`${teamId}Users`, query, function(results, error) {
+        if (!error) {
+            console.log('Get user by ID successful!');
+            callback(results, error);
+        } else {
+            console.log('Get user by ID hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
 function GetDefaultDraftObj(teamId, callback) {
     var query = new azure.TableQuery()
         .where('isDefault eq ?bool?', true)
@@ -198,6 +218,23 @@ function GetMaxDraftId(teamId, callback) {
     });
 }
 
+function GetDraftByName(teamId, draftName, callback) {
+    var query = new azure.TableQuery()
+        .where('RowKey eq ?', draftName)
+        .top(1);
+
+    QueryEntities(`${teamId}Drafts`, query, function(results, error) {
+        if (!error) {
+            console.log('Get draft by name successful!');
+            callback(results, error);
+        } else {
+            console.log('Get draft by name hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
 function GetDraftList(teamId, callback) {
     var query = new azure.TableQuery()
         .top(100);
@@ -208,6 +245,54 @@ function GetDraftList(teamId, callback) {
             callback(results, error);
         } else {
             console.log('Get draft list hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
+function GetPlayerList(teamId, draftId, callback) {
+    var userQuery = new azure.TableQuery()
+        .top(100);
+
+    QueryEntities(`${teamId}Users`, userQuery, function(userResults, error) {
+        if (!error) {
+            if (userResults && userResults.length > 0) {
+                var draftUserQuery = new azure.TableQuery()
+                    .where('PartitionKey eq ?', draftId)
+                    .top(100);
+
+                QueryEntities(`${teamId}DraftUsers`, draftUserQuery, function(draftUserResults, error) {
+                    if (!error) {
+                        console.log('Get player list successful!');
+                        var playerList = [];
+                        for (var i = 0; i < draftUserResults.length; i++) {
+                            var playerFound = false;
+                            var playerName = '';
+                            for (var j = 0; j < userResults.length; j++) {
+                                if (userResults[j].PartitionKey._ === draftUserResults[i].RowKey._) {
+                                    playerFound = true;
+                                    playerName = userResults[j].playerName._;
+                                    break;
+                                }
+                            }
+                            if (playerFound) {
+                                playerList.push(playerName);
+                            } else {
+                                console.log('Error in data - user is in draft-user mapping table but not in user table!');
+                            }
+                        }
+
+                        callback(playerList, error);
+                    } else {
+                        console.log('Get draft user queryhit a failure!');
+                        console.log(error);
+                        callback(null, error);
+                    }
+                });
+            }
+        } else {
+            console.log('Get draft user queryhit a failure!');
             console.log(error);
             callback(null, error);
         }
@@ -316,14 +401,79 @@ function AddPlayer(teamId, playerId, playerName, draftId, callback) {
     });
 }
 
+function AddDefaultCrew(teamId, draftId, callback) {
+    var defaultCrew = [
+        {
+            name: 'Charles',
+            id: 'U8GFFQ9Q9'
+        },
+        {
+            name: 'Mack',
+            id: 'U8GEW2GFM'
+        },
+        {
+            name: 'Mike',
+            id: 'U9AV4N9FY'
+        },
+        {
+            name: 'Kael',
+            id: 'U8HP5UFQA'
+        },
+        {
+            name: 'Matt',
+            id: 'U8GFGNQ0K'
+        },
+        {
+            name: 'Adrian',
+            id: 'U8H5E7HLG'
+        },
+        {
+            name: 'Mikko',
+            id: 'UB36VQ2KZ'
+        }
+    ];
+    
+    if (teamId === 'T8H399MDG') {
+        defaultCrew.push(
+            {
+                name: 'JeremyDev',
+                id: 'U8HUL39ML'
+            }
+        );
+    } else {
+        defaultCrew.push(
+            {
+                name: 'Jeremy',
+                id: 'U8GLE7FJ8'
+            }
+        );
+    }
+    
+    for (var j = 0; j < defaultCrew.length; j++) {
+        AddPlayer(teamId, defaultCrew[j].id, defaultCrew[j].name, draftId, function(results, error) {
+            if (!error) {
+                console.log(`Successfully added player in default crew!`);
+            } else {
+                console.log('Adding default crew hit an error!');
+                console.log(error);
+                callback(error);
+            }
+        });
+    }
+}
+
 module.exports = {
     CreateTables: CreateTables,
     AddDraftObj: AddDraftObj,
     GetSingleDraftObj: GetSingleDraftObj,
     GetSingleUserObj: GetSingleUserObj,
     GetDefaultDraftObj: GetDefaultDraftObj,
+    GetDraftByName: GetDraftByName,
     GetDraftList: GetDraftList,
+    GetPlayerList: GetPlayerList,
     GetPlayerDraftMappingById: GetPlayerDraftMappingById,
+    GetUserByUserName: GetUserByUserName,
     DeleteDraftObj: DeleteDraftObj,
-    AddPlayer: AddPlayer
+    AddPlayer: AddPlayer,
+    AddDefaultCrew: AddDefaultCrew
 };
