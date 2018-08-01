@@ -8,7 +8,7 @@ module.exports = function(bot, builder) {
                     'Add draft', 
                     'Delete draft', 
                     'List drafts', 
-                    'Set default draft' // needed?
+                    'Set default draft'
                 ]);
             } else {
                 session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
@@ -29,7 +29,7 @@ module.exports = function(bot, builder) {
                 session.beginDialog('listDraft');
                 break;
             case 'Set default draft':
-                session.send('Not implemented!');
+                session.beginDialog('setDefaultDraft');
                 break;
             }
         },
@@ -38,7 +38,7 @@ module.exports = function(bot, builder) {
         }
     ])
         .triggerAction({
-            matches: [/^(@\S+\s)*draft*$/i],
+            matches: [/^(@\S+\s)drafts*$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 
@@ -60,7 +60,7 @@ module.exports = function(bot, builder) {
                             if (results.length > 0) {
                                 session.endConversation('Error: there\'s already a draft with that name - aborting...');
                             } else {
-                                builder.Prompts.choice(session, 'Would you like to add the \'default\' crew?', 'Yes|No');
+                                builder.Prompts.choice(session, 'Would you like to add the \'default\' crew?', 'yes|no');
                             }
                         }
                     } else {
@@ -77,7 +77,7 @@ module.exports = function(bot, builder) {
                     session.endConversation(`Something went wrong with add draft, contact tech support!`);
                 }
 
-                if (results.response.entity === 'Yes') {
+                if (results.response.entity === 'yes') {
                     dataOps.GetDraftByName(helper.GetTeamId(session), session.userData.draftName, function(results, error) {
                         if (!error) {
                             if (results && results.length > 0) {
@@ -94,6 +94,7 @@ module.exports = function(bot, builder) {
                         } else {
                             session.endConversation('Error: something went wrong with get draft by name!');
                         }
+                        session.endConversation();
                     });
                 } else {
                     session.endConversation();
@@ -168,24 +169,48 @@ module.exports = function(bot, builder) {
                 session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
             }
         }
-        //       builder.Prompts.text(session, 'What would you like to name the draft?');
-        //     },
-        //     function (session, results) {
-        //       if (results.response) {
-        //         session.userData.draftName = results.response;
-        //         builder.Prompts.text(session, 'Specify a comma delimited list of players to play in the draft (or type \'default\' to add the default crew');
-        //       } 
-        //     },
-        //     function(session, results){
-        //       if(results.response){
-        //         session.userData.players = results.response;
-        //         var msg = 'Thank you. Created draft ' + session.userData.draftName + ' with players ' + session.userData.players;
-        //         session.endDialog(msg);
-        //       }
-        //     }
     ])
         .triggerAction({
             matches: [/^(@\S+\s)*list drafts*$/i],
+            confirmPrompt: 'This will cancel the current operation. Are you sure?'
+        });
+
+    bot.dialog('setDefaultDraft', [
+        function(session) {
+            if (!helper.CheckMessage(session)) {
+                session.send('Alright, let\'s pick a new draft as default!');
+                dataOps.GetDraftList(helper.GetTeamId(session), function(draftResults, error) {
+                    if (!error) {
+                        var draftListForDefault = [];
+                        for (var i = 0; i < draftResults.length; i++) {
+                            draftListForDefault.push(`${draftResults[i].PartitionKey._}: ${draftResults[i].RowKey._}`.substr(0, 20));
+                        }
+                        builder.Prompts.choice(session, 
+                            'Ready to set a draft as default, select from below (or \'q\' to quit):', 
+                            draftListForDefault
+                        );
+                    } else {
+                        session.endConversation('Couldn\'t get draft list, consult tech support!');
+                    }
+                });                
+            } else {
+                session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
+            }
+        },
+        function (session, results) {
+            var command = results.response.entity;
+            var extractedDraftId = command.substr(0, String(command).indexOf(':'));
+            dataOps.SetDefaultDraft(helper.GetTeamId(session), extractedDraftId, function(error) {
+                if (!error) {
+                    session.endConversation('Set default successful!');
+                } else {
+                    session.endConversation(`Something went wrong setting default draft, contact tech support! Error details: ${error}`);
+                }
+            });
+        }
+    ])
+        .triggerAction({
+            matches: [/^(@\S+\s)*set default draft$/i],
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 };

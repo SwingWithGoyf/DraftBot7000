@@ -204,7 +204,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForListPlayers = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run command on default draft ${session.userData.draftIdForListPlayers}: ${draftResults[0].RowKey._}, is this what you want?`, 'Yes|No');
+                        builder.Prompts.choice(session, `About to run **list players** command on default draft ${session.userData.draftIdForListPlayers}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|no');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -214,7 +214,7 @@ module.exports = function(bot, builder) {
             }
         },
         function(session, results, next) {
-            if (results.response.entity === 'Yes') {
+            if (results.response.entity === 'yes') {
                 next();
             } else {
                 dataOps.GetDraftList(helper.GetTeamId(session), function(draftResults, error) {
@@ -225,7 +225,7 @@ module.exports = function(bot, builder) {
                         }
 
                         builder.Prompts.choice(session, 
-                            'Ready to select a draft for the \'list players\' operation - which one would you like? (or \'q\' to quit):', 
+                            'Ready to select a draft for the **list players** operation - which one would you like? (or \'q\' to quit):', 
                             draftListForSelection
                         );
                     } else {
@@ -264,44 +264,3 @@ module.exports = function(bot, builder) {
             confirmPrompt: 'This will cancel the current operation. Are you sure?'
         });
 };
-
-// {
-//     originalName: "Charles",
-//     name: "Charles",
-//     id: "U8GFFQ9Q9"
-// },
-// {
-//     originalName: "Mack",
-//     name: "Mack",
-//     id: "U8GEW2GFM"
-// },
-// {
-//     originalName: "Mike",
-//     name: "Mike",
-//     id: "U9AV4N9FY"
-// },
-// {
-//     originalName: "Kael",
-//     name: "Kael",
-//     id: "U8HP5UFQA"
-// },
-// {
-//     originalName: "Matt",
-//     name: "Matt",
-//     id: "U8GFGNQ0K"
-// },
-// {
-//     originalName: "Adrian",
-//     name: "Adrian",
-//     id: "U8H5E7HLG"
-// },
-// {
-//     originalName: "Mikko",
-//     name: "Mikko",
-//     id: "UB36VQ2KZ"
-// },
-// {
-//     originalName: "Mikko",
-//     name: "Mikko",
-//     id: "UB36VQ2KZ"
-// }

@@ -45,7 +45,7 @@ function MergeEntity(task, tableName, callback) {
                 console.log(`Response code: ${response.statusCode}`);
             }
         }
-        callback(error);
+        callback(error, result);
     });
 }
 
@@ -97,6 +97,7 @@ function CreateTables(teamId) {
     CreateTableIfNotExists(`${teamId}Drafts`);
     CreateTableIfNotExists(`${teamId}Users`);
     CreateTableIfNotExists(`${teamId}DraftUsers`);
+    CreateTableIfNotExists(`${teamId}DraftRares`);
 }
 
 function AddDraftObj(teamId, draftName, callback) {
@@ -120,21 +121,68 @@ function AddDraftObj(teamId, draftName, callback) {
 }
 
 function DeleteDraftObj(teamId, draftId, callback) {
-    GetSingleDraftObj(teamId, draftId, function(draftResults) {
-        var task = {
-            PartitionKey: draftId,
-            RowKey: draftResults[0].RowKey._
-        };
+    GetSingleDraftObj(teamId, draftId, function(draftResults, error) {
+        if (!error && draftResults && draftResults.length > 0) {
+            var task = {
+                PartitionKey: draftId,
+                RowKey: draftResults[0].RowKey._
+            };
 
-        DeleteEntity(task, `${teamId}Drafts`, function(error) {
-            if (!error) {
-                console.log('Delete draft obj successful!');
-            } else {
-                console.log('Something went wrong trying to delete draft obj!');
-            }
-            callback(error);
-        });
+            DeleteEntity(task, `${teamId}Drafts`, function(error) {
+                if (!error) {
+                    console.log('Delete draft obj successful!');
+                } else {
+                    console.log('Something went wrong trying to delete draft obj!');
+                }
+                callback(error);
+            });
+        } else {
+            console.log(`Hit unexpected error retrieving draft: ${error}`);
+        }
     });    
+}
+
+function SetDefaultDraft(teamId, draftId, callback) {
+    var entGen = azure.TableUtilities.entityGenerator;
+    GetSingleDraftObj(teamId, draftId, function(draftResults, error) {
+        if (!error && draftResults && draftResults.length > 0) {
+            GetDefaultDraftObj(teamId, function(defaultResults, error) {
+                if (!error && defaultResults && defaultResults.length > 0) {
+                    var oldDefaultTask = {
+                        PartitionKey: entGen.String(defaultResults[0].PartitionKey._),
+                        RowKey: entGen.String(defaultResults[0].RowKey._),
+                        isDefault: false
+                    };
+                    var newDefaultTask = {
+                        PartitionKey: entGen.String(draftResults[0].PartitionKey._),
+                        RowKey: entGen.String(draftResults[0].RowKey._),
+                        isDefault: true
+                    };
+
+                    MergeEntity(oldDefaultTask, `${teamId}Drafts`, function(error) {
+                        if (!error) {
+                            console.log(`Merging old default draft successful`);
+                            MergeEntity(newDefaultTask, `${teamId}Drafts`, function(error) {
+                                if (!error) {
+                                    console.log(`Merging new default draft successful`);
+                                }
+                                callback(error);
+                            });                                                        
+                        } else {
+                            callback(error);
+                        }                        
+                    });
+
+                } else {
+                    console.log(`Hit unexpected error retrieving default draft: ${error}`);
+                    callback(error);
+                }
+            }); 
+        } else {
+            console.log(`Hit unexpected error retrieving single draft: ${error}`);
+            callback(error);
+        }
+    });   
 }
 
 function GetSingleDraftObj(teamId, draftId, callback) {
@@ -462,12 +510,117 @@ function AddDefaultCrew(teamId, draftId, callback) {
     }
 }
 
+function AddRareObj(teamId, draftId, userId, rareName, callback) {
+    var entGen = azure.TableUtilities.entityGenerator;
+    
+    var draftRareTask = {
+        PartitionKey: entGen.String(String(draftId)),
+        RowKey: entGen.String(String(rareName)),
+        draftedUserId: entGen.String(userId),
+        redraftedUserId: entGen.String(null),
+        redrafted: entGen.Boolean(false),
+        isFoil: entGen.Boolean(false),  //todo: handle foils
+        setSymbol: entGen.String(null)  //todo: handle sets
+    };
+
+    if (rareName.toLowerCase() === 'yes' || rareName.toLowerCase() === 'no' || rareName.toLowerCase() === 'q') {
+        callback('Unexpected input to add rare!');
+    } else {
+        InsertOrMergeEntity(draftRareTask, `${teamId}DraftRares`, function(error) {
+            if (!error) {
+                console.log('Created and/or updated user-draft mapping in DraftRares table!');
+            } else {
+                console.log('Something went wrong trying to insert in DraftRares table!');
+                console.log(error);
+            }
+            callback(error);
+        });
+    }
+}
+
+function AddRareList(teamId, draftId, userId, rareList, callback) {
+    var rareArray = rareList.split(';');
+    var successfulAdds = 0;
+
+    for (var i = 0; i < rareArray.length; i++) {
+        var curRare = rareArray[i].trim();
+        AddRareObj(teamId, draftId, userId, curRare, function(error) {
+            if (!error) {
+                successfulAdds++;
+                console.log(`Added rare #${successfulAdds} from the list`);
+            } else {
+                console.log(`Hit unexpected error while adding rare from list: ${error}`);
+                callback(error);
+            }
+
+            if (successfulAdds === rareArray.length) {
+                callback(error);
+            }
+        });
+    }
+}
+
+function GetRareList(teamId, draftId, callback) {
+    var userQuery = new azure.TableQuery()
+        .top(100);
+
+    QueryEntities(`${teamId}Users`, userQuery, function(userResults, error) {
+        if (!error) {
+            if (userResults && userResults.length > 0) {
+                var draftUserQuery = new azure.TableQuery()
+                    .where('PartitionKey eq ?', draftId)
+                    .top(100);
+
+                QueryEntities(`${teamId}DraftRares`, draftUserQuery, function(draftRareResults, error) {
+                    if (!error) {
+                        console.log('Get rare list successful!');
+                        var playerList = {};
+                        for (var i = 0; i < draftRareResults.length; i++) {
+                            var playerFound = false;
+                            var playerName = '';
+                            // find the player corresponding to the drafter
+                            for (var j = 0; j < userResults.length; j++) {
+                                if (userResults[j].PartitionKey._ === draftRareResults[i].draftedUserId._) {
+                                    playerFound = true;
+                                    playerName = userResults[j].playerName._;
+                                    break;
+                                }
+                            }
+                            // now push the rare onto an array per-player
+                            if (playerFound) {
+                                if (!playerList[playerName]) {
+                                    playerList[playerName] = [];
+                                }
+                                playerList[playerName].push(draftRareResults[i].RowKey._);
+                            } else {
+                                console.log('Error in data - user is in draft-user mapping table but not in user table!');
+                                break;
+                            }
+                        }
+
+                        callback(playerList, error);
+                    } else {
+                        console.log('Get draft user queryhit a failure!');
+                        console.log(error);
+                        callback(null, error);
+                    }
+                });
+            }
+        } else {
+            console.log('Get draft user query hit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
 module.exports = {
     CreateTables: CreateTables,
     AddDraftObj: AddDraftObj,
     GetSingleDraftObj: GetSingleDraftObj,
     GetSingleUserObj: GetSingleUserObj,
     GetDefaultDraftObj: GetDefaultDraftObj,
+    SetDefaultDraft: SetDefaultDraft,
     GetDraftByName: GetDraftByName,
     GetDraftList: GetDraftList,
     GetPlayerList: GetPlayerList,
@@ -475,5 +628,8 @@ module.exports = {
     GetUserByUserName: GetUserByUserName,
     DeleteDraftObj: DeleteDraftObj,
     AddPlayer: AddPlayer,
-    AddDefaultCrew: AddDefaultCrew
+    AddDefaultCrew: AddDefaultCrew,
+    AddRareObj: AddRareObj,
+    AddRareList: AddRareList,
+    GetRareList: GetRareList
 };

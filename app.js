@@ -41,6 +41,9 @@ var bot = new builder.UniversalBot(connector).set('storage', tableStorage);
 
 // The dialog stack is cleared and this dialog is invoked when the user enters 'help'.
 bot.dialog('quit', function (session) {
+    session.perUserInConversationData = {};
+    session.userData = {};
+    session.conversationData = {};
     session.endConversation('Ok, nevermind!');
 })
     .triggerAction({
@@ -77,7 +80,7 @@ require('./resultManagement.js')(bot, builder);
 bot.dialog('/', [
     function(session) {
         if (!helper.CheckMessage(session)) {
-            builder.Prompts.choice(session, 'Welcome to draft bot 7000!  Here\'s the categories of commands I support (type \'q\' to quit):', [
+            builder.Prompts.choice(session, 'Welcome to draft bot 7000!  Here\'s the categories of commands I support (at any time in a conversation you can type \'q\' to quit):', [
                 'Drafts',
                 'Players',
                 'Rares',
