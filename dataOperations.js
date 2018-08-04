@@ -1,5 +1,7 @@
 var azure = require('azure-storage');
 var tableSvc = azure.createTableService('DefaultEndpointsProtocol=https;AccountName=cs42764b8a75a82x4a0bx95f;AccountKey=SXmidOGCxdQC8PQnDs5YUlurZT/guHRdZkdi91N9JIqI49COjpZ2lwvHbqxigOvaNFqKG315oGASfUpljw46Fw==;EndpointSuffix=core.windows.net');// console.log('yay table created!');
+var cardPrice = require('./cardPrice.js');
+var helper = require('./helpers.js');
 
 function CreateTableIfNotExists(tableName) {
     tableSvc.createTableIfNotExists(tableName, function(error, result, response) {
@@ -333,7 +335,126 @@ function GetPlayerList(teamId, draftId, callback) {
 
                         callback(playerList, error);
                     } else {
-                        console.log('Get draft user queryhit a failure!');
+                        console.log('Get draft user query hit a failure!');
+                        console.log(error);
+                        callback(null, error);
+                    }
+                });
+            }
+        } else {
+            console.log('Get draft user queryhit a failure!');
+            console.log(error);
+            callback(null, error);
+        }
+    });
+}
+
+
+function GetPlayerListWithRares(teamId, draftId, callback) {
+    var userQuery = new azure.TableQuery()
+        .top(100);
+
+    var draftUserQuery = new azure.TableQuery()
+        .where('PartitionKey eq ?', draftId)
+        .top(100);
+
+    QueryEntities(`${teamId}DraftUsers`, draftUserQuery, function(draftUserResults, error) {
+        if (!error) {
+            console.log('Get player list successful!');
+
+            var successfulQueries = 0;
+            var playerList = [];
+
+            // loop over all users
+            for (var i = 0; i < draftUserResults.length; i++) {
+                playerList[i] = {};
+                var curUserId = draftUserResults[i].PartitionKey._;
+                // get the user name
+                var userNameQuery = new azure.TableQuery()
+                    .where('PartitionKey eq ?', curUserId)
+                    .top(1);
+                QueryEntities(`${teamId}Users`, userNameQuery, function(userResults, error) {
+                    if (!error && userResults && userResults.length > 0) {
+                        console.log('Got player name!');
+                        playerList[i].name = userResults[0].playerName;
+                        playerList[i].draftedRares = [];
+                        playerList[i].redraftedRares = [];
+
+                        // now get the rares
+                        var filter1 = azure.TableQuery.stringFilter('PartitionKey', azure.TableUtilities.QueryComparisons.EQUAL, String(draftId));
+                        var filter2 = azure.TableQuery.stringFilter('draftedUserId', azure.TableUtilities.QueryComparisons.EQUAL, curUserId);
+                        var finalFilter = azure.TableQuery.combineFilters(filter1, azure.TableUtilities.TableOperators.AND, filter2);
+                        var draftRaresQuery = new azure.TableQuery()
+                            .where(finalFilter)
+                            .top(100);
+
+                        QueryEntities(`${teamId}DraftRares`, draftRaresQuery, function(draftRareResults, error) {
+                            if (!error) {
+                                if (draftRareResults && draftRareResults.length > 0) {
+                                    for (var j = 0; j < draftRareResults.length; j++) {
+                                        playerList[i].draftedRares.push(
+                                            {
+                                                name: draftRareResults[j].RowKey._, 
+                                                isFoil: draftRareResults[j].isFoil,
+                                                buyPrice: draftRareResults[j].buyPrice,
+                                                sellPrice: draftRareResults[j].sellPrice
+                                            });
+                                    }
+                                } 
+                                //todo: query redrafted cards too
+                                successfulQueries++;
+                                if (successfulQueries === draftUserResults.length) {
+                                    callback(playerList, error);
+                                }
+                            } else {
+                                console.log(`Unexpected error getting draft rare mapping: ${error}`);
+                                callback(null, error);        
+                            }
+                        });
+
+                    } else {
+                        console.log(`Unexpected error getting player list: ${error}`);
+                        callback(null, error);
+                    }
+                });
+            }
+        } else {
+            console.log(`Unexpected error getting player list: ${error}`);
+            callback(null, error);
+        }
+    });
+
+    QueryEntities(`${teamId}Users`, userQuery, function(userResults, error) {
+        if (!error) {
+            if (userResults && userResults.length > 0) {
+                var draftUserQuery = new azure.TableQuery()
+                    .where('PartitionKey eq ?', draftId)
+                    .top(100);
+
+                QueryEntities(`${teamId}DraftUsers`, draftUserQuery, function(draftUserResults, error) {
+                    if (!error) {
+                        console.log('Get player list successful!');
+                        var playerList = {};
+                        for (var i = 0; i < draftUserResults.length; i++) {
+                            var playerFound = false;
+                            var playerName = '';
+                            for (var j = 0; j < userResults.length; j++) {
+                                if (userResults[j].PartitionKey._ === draftUserResults[i].RowKey._) {
+                                    playerFound = true;
+                                    playerName = userResults[j].playerName._;
+                                    break;
+                                }
+                            }
+                            if (playerFound) {
+                                playerList.push(playerName);
+                            } else {
+                                console.log('Error in data - user is in draft-user mapping table but not in user table!');
+                            }
+                        }
+
+                        callback(playerList, error);
+                    } else {
+                        console.log('Get draft user query hit a failure!');
                         console.log(error);
                         callback(null, error);
                     }
@@ -510,54 +631,154 @@ function AddDefaultCrew(teamId, draftId, callback) {
     }
 }
 
-function AddRareObj(teamId, draftId, userId, rareName, callback) {
+function AddRareObj(teamId, draftId, userId, rareName, buyPrice, sellPrice, callback) {
     var entGen = azure.TableUtilities.entityGenerator;
     
-    var draftRareTask = {
-        PartitionKey: entGen.String(String(draftId)),
-        RowKey: entGen.String(String(rareName)),
-        draftedUserId: entGen.String(userId),
-        redraftedUserId: entGen.String(null),
-        redrafted: entGen.Boolean(false),
-        isFoil: entGen.Boolean(false),  //todo: handle foils
-        setSymbol: entGen.String(null)  //todo: handle sets
-    };
+    // use the web to determine if this is a valid magic card (if not, return it in the callback)
+    //todo: read from a "truth" db for cards, not scrape card kingdom
+    //todo: handle foils
+    cardPrice.getCardBuyPriceWeb(rareName, false, function(cards) {
+        if (cards && cards.length > 0) {
+            console.log('Succesfully found magic card.');
 
-    if (rareName.toLowerCase() === 'yes' || rareName.toLowerCase() === 'no' || rareName.toLowerCase() === 'q') {
-        callback('Unexpected input to add rare!');
-    } else {
-        InsertOrMergeEntity(draftRareTask, `${teamId}DraftRares`, function(error) {
-            if (!error) {
-                console.log('Created and/or updated user-draft mapping in DraftRares table!');
+            var draftRareTask = {
+                PartitionKey: entGen.String(String(draftId)),
+                RowKey: entGen.String(String(rareName)),
+                draftedUserId: entGen.String(userId),
+                redraftedUserId: entGen.String(null),
+                redrafted: entGen.Boolean(false),
+                isFoil: entGen.Boolean(false),  //todo: handle foils
+                setSymbol: entGen.String(null),  //todo: handle sets
+                buyPrice: entGen.Double(buyPrice),
+                sellPrice: entGen.Double(sellPrice)
+            };
+
+            if (rareName.toLowerCase() === 'yes' || rareName.toLowerCase() === 'no' || rareName.toLowerCase() === 'q') {
+                callback('Unexpected input to add rare!');
             } else {
-                console.log('Something went wrong trying to insert in DraftRares table!');
-                console.log(error);
+                InsertOrMergeEntity(draftRareTask, `${teamId}DraftRares`, function(error) {
+                    if (!error) {
+                        console.log('Created and/or updated user-draft mapping in DraftRares table!');
+                    } else {
+                        console.log('Something went wrong trying to insert in DraftRares table!');
+                        console.log(error);
+                    }
+                    callback(null, error);
+                });
             }
-            callback(error);
-        });
-    }
+        } else {
+            var error = 'Input not a valid magic card';
+            console.log(error);
+            callback(rareName, error);
+        }
+    });
 }
 
 function AddRareList(teamId, draftId, userId, rareList, callback) {
     var rareArray = rareList.split(';');
-    var successfulAdds = 0;
+    //var successfulAdds = 0;
 
+    var cardBlob = [];
     for (var i = 0; i < rareArray.length; i++) {
-        var curRare = rareArray[i].trim();
-        AddRareObj(teamId, draftId, userId, curRare, function(error) {
-            if (!error) {
-                successfulAdds++;
-                console.log(`Added rare #${successfulAdds} from the list`);
-            } else {
-                console.log(`Hit unexpected error while adding rare from list: ${error}`);
-                callback(error);
-            }
+        //format for each card: {"name":"Legion's Landing", "set": "Ixalan", "foil": false}
+        var curRare = rareArray[i];
+        var isFoil = helper.IsRareFoil(curRare);
+        curRare = curRare.replace('(foil)', '').replace('*', '').trim();
+        curRare = helper.ToTitleCase(curRare);
+        //todo: handle foils
+        cardBlob.push({'name': curRare, 'foil': isFoil});
 
-            if (successfulAdds === rareArray.length) {
-                callback(error);
-            }
-        });
+        //todo: sort out bugs 
+        // - Charles has a bug querying foils for buy price
+        // - can't use rare name as rowkey in DraftRares - doesn't allow more than one of a rare in a draft (use rare ID instead)
     }
+
+    cardPrice.getPrices(cardBlob, 'both', function(error, cards) {
+        var rejectedCards = [];
+        var successfulAdds = 0;
+        if (!error) {
+            for (var i = 0; i < cards.buyprices.length; i++) {
+                var cardPriceObj = cards.buyprices[i];
+                var buyPrice = (cards.buyprices[i].maxPrice == null) ? 0 : cards.buyprices[i].maxPrice;
+                var sellPrice = 0;
+
+                // find the sell price
+                if (cards.sellprices && cards.sellprices.length > 0) {
+                    for (var j = 0; j < cards.sellprices.length; j++) {
+                        if (cards.sellprices[j].name === cardPriceObj.name) {
+                            sellPrice = (cards.sellprices[j].maxPrice == null) ? 0 : cards.sellprices[j].maxPrice;
+                            break;
+                        }
+                    }
+                }
+
+                //todo: figure out the right set so we store the right price
+                AddRareObj(teamId, draftId, userId, cardPriceObj.name, buyPrice, sellPrice, function(rejectedRare, error) {
+                    if (!error) {
+                        successfulAdds++;
+                        console.log(`Added rare #${successfulAdds} from the list`);
+                    } else {
+                        console.log(`Hit error while adding rare from list: ${error}`);
+                        if (rejectedRare) {
+                            console.log(`Rare was not found as a valid magic card: ${rejectedRare}`);
+                            rejectedCards.push(rejectedRare);
+                        } else {
+                            callback(error, null);
+                        }
+                    }
+        
+                    if (successfulAdds === (rareArray.length - rejectedCards.length)) {
+                        callback(error, rejectedCards);
+                    }
+                });
+            }
+        } else {
+            console.log(`Hit error while getting prices: ${error}`);
+        }
+    });
+}
+
+function DeleteRareObj(teamId, draftId, userId, callback) {
+    var filter1 = azure.TableQuery.stringFilter('PartitionKey', azure.TableUtilities.QueryComparisons.EQUAL, String(draftId));
+    var filter2 = azure.TableQuery.stringFilter('draftedUserId', azure.TableUtilities.QueryComparisons.EQUAL, userId);
+    var finalFilter = azure.TableQuery.combineFilters(filter1, azure.TableUtilities.TableOperators.AND, filter2);
+    var query = new azure.TableQuery()
+        .where(finalFilter);
+
+    QueryEntities(`${teamId}DraftRares`, query, function(results, error) {
+        if (!error) {
+            if (results && results.length > 0) {
+                var successfulDeletes = 0;
+                for (var i = 0; i < results.length; i++) {
+                    var task = {
+                        PartitionKey: results[i].PartitionKey._,
+                        RowKey: results[i].RowKey._
+                    };
+
+                    DeleteEntity(task, `${teamId}DraftRares`, function(error) {
+                        if (!error) {
+                            console.log('Delete rare obj successful!');
+                            successfulDeletes++;
+                        } else {
+                            console.log(`Something went wrong trying to delete rare obj: ${error}`);
+                            callback(null, error);
+                        }
+
+                        if (successfulDeletes === results.length) {
+                            callback(null, error);
+                        }
+                    });
+                }
+            } else {
+                var infoMsg = 'User has no rares, nothing to do';
+                console.log(infoMsg);
+                callback(infoMsg, error);
+            }
+        } else {
+            console.log(`Hit unexpected error retrieving draft: ${error}`);
+            callback(error);
+        }
+    });
 }
 
 function GetRareList(teamId, draftId, callback) {
@@ -624,6 +845,7 @@ module.exports = {
     GetDraftByName: GetDraftByName,
     GetDraftList: GetDraftList,
     GetPlayerList: GetPlayerList,
+    GetPlayerListWithRares: GetPlayerListWithRares,
     GetPlayerDraftMappingById: GetPlayerDraftMappingById,
     GetUserByUserName: GetUserByUserName,
     DeleteDraftObj: DeleteDraftObj,
@@ -631,5 +853,6 @@ module.exports = {
     AddDefaultCrew: AddDefaultCrew,
     AddRareObj: AddRareObj,
     AddRareList: AddRareList,
+    DeleteRareObj: DeleteRareObj,  
     GetRareList: GetRareList
 };

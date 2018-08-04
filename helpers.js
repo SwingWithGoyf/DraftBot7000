@@ -72,8 +72,27 @@ function GetUserId(session) {
     return session.userData.userId;
 }
 
+function ToTitleCase(str) {
+    return str.replace(/\w\S*/g, function(txt){
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+}
+
+function IsRareFoil(cardName) {
+    var isFoil = false;
+    if (cardName.indexOf('*') !== -1 || cardName.indexOf('(foil)') !== -1)
+    {
+        isFoil = true;
+    }
+
+    return isFoil;
+}
+
+
 module.exports = {
     CheckMessage: CheckMessage,
     GetTeamId: GetTeamId,
-    GetUserId: GetUserId
+    GetUserId: GetUserId,
+    ToTitleCase: ToTitleCase,
+    IsRareFoil: IsRareFoil
 };

@@ -1,0 +1,15 @@
+{
+    "name": "dbngrok",
+    "description": "",
+    "secretKey": "",
+    "services": [
+        {
+            "appId": "e8859bc0-fea5-4445-8501-b5b1d69255e9",
+            "id": "7fe07ce0-9662-11e8-b6bc-d180891dece4",
+            "type": "endpoint",
+            "appPassword": "iEvj73{}pjdkB%i-",
+            "endpoint": "https://091b2f9d.ngrok.io/api/messages",
+            "name": "https://091b2f9d.ngrok.io/api/messages"
+        }
+    ]
+}
