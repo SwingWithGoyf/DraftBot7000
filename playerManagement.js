@@ -204,7 +204,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForListPlayers = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run **list players** command on default draft ${session.userData.draftIdForListPlayers}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|no');
+                        builder.Prompts.choice(session, `About to run **list players** command on default draft ${session.userData.draftIdForListPlayers}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another draft');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -240,21 +240,59 @@ module.exports = function(bot, builder) {
                 session.userData.draftIdForListPlayers = command.substr(0, String(command).indexOf(':'));
             }
 
-            var playerListStr = '';
-            dataOps.GetPlayerList(helper.GetTeamId(session), session.userData.draftIdForListPlayers, function(playerResults, error) {
+            var playerListMessage = {};
+            playerListMessage.channelData = {};
+            playerListMessage.channelData.text = 'Here are the players for the selected draft:';
+            playerListMessage.channelData.response_type = 'in_channel';
+            playerListMessage.channelData.attachments = [];
+
+            dataOps.GetPlayerListWithRares(helper.GetTeamId(session), session.userData.draftIdForListPlayers, function(playerResults, error) {
                 if (!error) {
-                    if (playerResults && playerResults.length > 0) {
+                    if (playerResults) {
                         for (var j = 0; j < playerResults.length; j++) {
-                            playerListStr += playerResults[j] + '\n\n';
+                            var raresDrafted = 0;
+                            var rareList = [];
+                            var playerName = 'Undefined';
+                            var playerData = playerResults[j];
+                            if (playerData.draftedRares && playerData.draftedRares.length > 0) {
+                                raresDrafted = playerData.draftedRares.length;
+                                var draftedRareArray = playerData.draftedRares;
+                                // turn the rare list into a more display friendly form
+                                for (var i = 0; i < draftedRareArray.length; i++) {
+                                    var rareStr = '';
+                                    rareStr += draftedRareArray[i].name;
+                                    rareStr += ` (Buy: $${helper.DecorateBuyPrice(draftedRareArray[i].buyPrice, draftedRareArray[i].name, draftedRareArray[i].isFoil)})`;
+                                    rareList.push(rareStr);
+                                }
+                            }
+                            if (playerData.name) {
+                                playerName = playerData.name;
+                            } 
+                            playerListMessage.channelData.attachments.push({
+                                fallback: `Player ${playerName} draft info`,
+                                color: helper.GetColorFromIndex(j),
+                                fields: [
+                                    {
+                                        title: 'Player:',
+                                        value: playerName,
+                                        short: true
+                                    },
+                                    {
+                                        title: `Rares drafted (${raresDrafted})`,
+                                        value: rareList.join(', '),
+                                        short: true
+                                    }
+                                ]
+                            });
                         }
                     } else {
-                        playerListStr = 'None';
+                        playerListMessage.channelData.text += 'None';
                     }
-                    session.send('Here are the players for the selected draft:');
-                    session.endConversation(playerListStr);
+
+                    session.endConversation(playerListMessage);
 
                 } else {
-                    session.endConversation('Couldn\'t fetch player list, contact tech support!');
+                    session.endConversation('Couldn\'t fetch rare list, contact tech support!');
                 }
             });
         }

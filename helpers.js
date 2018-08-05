@@ -74,7 +74,11 @@ function GetUserId(session) {
 
 function ToTitleCase(str) {
     return str.replace(/\w\S*/g, function(txt){
-        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        if (txt.toLowerCase() === 'the' || txt.toLowerCase() === 'of') {
+            return txt.toLowerCase();
+        } else {
+            return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+        }
     });
 }
 
@@ -88,11 +92,79 @@ function IsRareFoil(cardName) {
     return isFoil;
 }
 
+function DecorateBuyPrice(price, cardName, isFoil) {
+    //<www.google.com|foo>
+    var decoratedPrice = '<';
+    decoratedPrice += 'https://www.cardkingdom.com/catalog/search?search=header&filter%5Bname%5D=';
+    decoratedPrice += unDecorateCardName(cardName);
+    if (isFoil) {
+        decoratedPrice += '&filter%5Btab%5D=mtg_foil';
+    }
+    decoratedPrice += '|';
+    decoratedPrice += price;
+    decoratedPrice += '>';
+    return decoratedPrice;
+}
+
+function DecorateSellPrice(price, cardName) {
+    //<www.google.com|foo>
+    var decoratedPrice = '<';
+    decoratedPrice += 'https://www.cardkingdom.com/purchasing/mtg_singles/?filter%5Bsort%5D=price_desc&filter%5Bsearch%5D=mtg_advanced&filter%5Bname%5D=';
+    decoratedPrice += unDecorateCardName(cardName);
+    decoratedPrice += '|';
+    decoratedPrice += price;
+    decoratedPrice += '>';
+    return decoratedPrice;
+}
+
+function unDecorateCardName(cardName) {
+    var unDecoratedCardName = '';
+    unDecoratedCardName = cardName.replace('[[', '');
+    unDecoratedCardName = unDecoratedCardName.replace(']]', '');
+    unDecoratedCardName = unDecoratedCardName.replace('$', '');
+    unDecoratedCardName = unDecoratedCardName.replace('*', '');
+    unDecoratedCardName = unDecoratedCardName.replace('`', '');
+    unDecoratedCardName = unDecoratedCardName.replace('(foil)', '');
+    unDecoratedCardName = unDecoratedCardName.trim();
+
+    return unDecoratedCardName;
+}
+
+function GetColorFromIndex(index) {
+    var colorText = '';
+    switch (index % 6)
+    {
+    case 0:
+        colorText = '#ff8000';
+        break;
+    case 1:
+        colorText = '#dddd00';
+        break;
+    case 2:
+        colorText = '#0080ff';
+        break;
+    case 3:
+        colorText = '#ff0000';
+        break;
+    case 4:
+        colorText = '#ff00ff';
+        break;
+    case 5:
+        colorText = '#11aaff';
+        break;
+    }
+
+    return colorText;
+}
+
 
 module.exports = {
     CheckMessage: CheckMessage,
     GetTeamId: GetTeamId,
     GetUserId: GetUserId,
     ToTitleCase: ToTitleCase,
-    IsRareFoil: IsRareFoil
+    IsRareFoil: IsRareFoil,
+    DecorateBuyPrice: DecorateBuyPrice,
+    DecorateSellPrice: DecorateSellPrice,
+    GetColorFromIndex: GetColorFromIndex
 };

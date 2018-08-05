@@ -52,7 +52,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForAddRare = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run command \`add rare\` on default draft ${session.userData.draftIdForAddRare}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|no');
+                        builder.Prompts.choice(session, `About to run command \`add rare\` on default draft ${session.userData.draftIdForAddRare}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another draft');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -118,7 +118,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForAddRareOnBehalf = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run command **add rare on behalf** on default draft ${session.userData.draftIdForAddRareOnBehalf}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|no');
+                        builder.Prompts.choice(session, `About to run command **add rare on behalf** on default draft ${session.userData.draftIdForAddRareOnBehalf}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another draft');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -217,7 +217,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForDeleteRare = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run command \`delete rare\` on default draft ${session.userData.draftIdForDeleteRare}: ${draftResults[0].RowKey._}, is this what you want? (:warning: Warning, this will delete **all** of your associated rares for the draft, so type 'q' if this isn't what you want to do)`, 'yes|no');
+                        builder.Prompts.choice(session, `About to run command \`delete rare\` on default draft ${session.userData.draftIdForDeleteRare}: ${draftResults[0].RowKey._}, is this what you want? (:warning: Warning, this will delete **all** of your associated rares for the draft, so type 'q' if this isn't what you want to do)`, 'yes|pick another draft');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -278,7 +278,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForDeleteRareOnBehalf = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run command **delete rare on behalf** on default draft ${session.userData.draftIdForDeleteRareOnBehalf}: ${draftResults[0].RowKey._}, is this what you want? (:warning:**Warning** this will delete **all** rares for the specified player, select 'q' if this isn't what you want...)`, 'yes|no');
+                        builder.Prompts.choice(session, `About to run command **delete rare on behalf** on default draft ${session.userData.draftIdForDeleteRareOnBehalf}: ${draftResults[0].RowKey._}, is this what you want? (:warning:**Warning** this will delete **all** rares for the specified player, select 'q' if this isn't what you want...)`, 'yes|pick another draft');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -372,7 +372,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForListRares = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run **list rares** command on default draft ${session.userData.draftIdForListRares}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|no');
+                        builder.Prompts.choice(session, `About to run **list rares** command on default draft ${session.userData.draftIdForListRares}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another rare');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
