@@ -52,7 +52,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForAddRare = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run command \`add rare\` on default draft ${session.userData.draftIdForAddRare}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another draft');
+                        builder.Prompts.choice(session, `About to run command **add rare** on default draft ${session.userData.draftIdForAddRare}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another draft');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -93,12 +93,16 @@ module.exports = function(bot, builder) {
         function(session, results) {
             if (results.response) {
                 var rareList = results.response;
-                dataOps.AddRareList(helper.GetTeamId(session), session.userData.draftIdForAddRare, helper.GetUserId(session), rareList, function(error, rejectedRares) {
+                dataOps.AddRareList(helper.GetTeamId(session), session.userData.draftIdForAddRare, helper.GetUserId(session), rareList, function(error, rejectedRares, userInDraft) {
                     if (!error) {
-                        if (rejectedRares.length > 0) {
-                            session.endConversation(`Could not find a match for some of the specified rares as valid magic cards (check spelling): ${rejectedRares.join(',')}, added the rest successfully`);
+                        if (userInDraft) { 
+                            if (rejectedRares.length > 0) {
+                                session.endConversation(`Could not find a match for some of the specified rares as valid magic cards (check spelling): ${rejectedRares.join(',')}, added the rest successfully`);
+                            } else {
+                                session.endConversation('Successfully added all specified rares!');
+                            }
                         } else {
-                            session.endConversation('Successfully added all specified rares!');
+                            session.endConversation('You are not in the specified draft, use **add me** command under **players** menu first');
                         }
                     } else {
                         session.endConversation('Something went wrong with add rare, contact tech support!');
@@ -192,12 +196,16 @@ module.exports = function(bot, builder) {
         function(session, results) {
             if (results.response) {
                 var rareList = results.response;
-                dataOps.AddRareList(helper.GetTeamId(session), session.userData.draftIdForAddRareOnBehalf, session.userData.playerIdForAddRareOnBehalf, rareList, function(error, rejectedRares) {
+                dataOps.AddRareList(helper.GetTeamId(session), session.userData.draftIdForAddRareOnBehalf, session.userData.playerIdForAddRareOnBehalf, rareList, function(error, rejectedRares, userInDraft) {
                     if (!error) {
-                        if (rejectedRares.length > 0) {
-                            session.endConversation(`Could not find a match for some of the specified rares: ${rejectedRares.join(',')}, added the rest successfully`);
+                        if (userInDraft) {
+                            if (rejectedRares.length > 0) {
+                                session.endConversation(`Could not find a match for some of the specified rares: ${rejectedRares.join(',')}, added the rest successfully`);
+                            } else {
+                                session.endConversation('Successfully added all specified rares!');
+                            }
                         } else {
-                            session.endConversation('Successfully added all specified rares!');
+                            session.endConversation('Specified user is not in the specified draft!  Use **add player** command under **players** menu first');
                         }
                     } else {
                         session.endConversation('Something went wrong with add rare, contact tech support!');
@@ -372,7 +380,7 @@ module.exports = function(bot, builder) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
                         session.userData.draftIdForListRares = draftResults[0].PartitionKey._;
-                        builder.Prompts.choice(session, `About to run **list rares** command on default draft ${session.userData.draftIdForListRares}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another rare');
+                        builder.Prompts.choice(session, `About to run **list rares** command on default draft **${session.userData.draftIdForListRares}: ${draftResults[0].RowKey._}**, is this what you want?`, 'yes|pick another draft');
                     } else {
                         session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
@@ -417,19 +425,36 @@ module.exports = function(bot, builder) {
             dataOps.GetRareList(helper.GetTeamId(session), session.userData.draftIdForListRares, function(rareResults, error) {
                 if (!error) {
                     if (rareResults) {
-                        for (const [key, rareValue] of Object.entries(rareResults)) {
+
+                        for (var i = 0; i < rareResults.length; i++) {
+                            var rareValue = rareResults[i];
                             playerListMessage.channelData.attachments.push({
-                                fallback: `Player ${key} drafted ${rareValue.join(',')}`,
-                                color: '#ff8000',
+                                fallback: `Rare ${rareValue.name} info`,
+                                color: helper.GetColorFromIndex(i),
                                 fields: [
                                     {
-                                        title: 'Player:',
-                                        value: key,
+                                        title: 'Name:',
+                                        value: rareValue.name,
                                         short: true
                                     },
                                     {
-                                        title: `Rares drafted (${rareValue.length})`,
-                                        value: rareValue.join(','),
+                                        title: `Buy price`,
+                                        value: `${helper.DecorateBuyPrice(rareValue.buyPrice, rareValue.Name, rareValue.isFoil)}`,
+                                        short: true
+                                    },
+                                    {
+                                        title: `Sell price`,
+                                        value: `${helper.DecorateSellPrice(rareValue.sellPrice, rareValue.Name, rareValue.isFoil)}`,
+                                        short: true
+                                    },
+                                    {
+                                        title: `Drafted by`,
+                                        value: `${rareValue.draftedUserName}`,
+                                        short: true
+                                    },
+                                    {
+                                        title: `Rerafted by`,
+                                        value: `${rareValue.redraftedUserName}`,
                                         short: true
                                     }
                                 ]

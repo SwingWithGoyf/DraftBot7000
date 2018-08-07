@@ -1,15 +1,15 @@
 {
-    "name": "dbngrok",
+    "name": "LatestNGrokBot",
     "description": "",
     "secretKey": "",
     "services": [
         {
             "appId": "e8859bc0-fea5-4445-8501-b5b1d69255e9",
-            "id": "7fe07ce0-9662-11e8-b6bc-d180891dece4",
+            "id": "431f0f20-9981-11e8-ad8e-e721a31a4ce1",
             "type": "endpoint",
             "appPassword": "iEvj73{}pjdkB%i-",
-            "endpoint": "https://091b2f9d.ngrok.io/api/messages",
-            "name": "https://091b2f9d.ngrok.io/api/messages"
+            "endpoint": "https://b1087a07.ngrok.io/api/messages",
+            "name": "https://b1087a07.ngrok.io/api/messages"
         }
     ]
 }

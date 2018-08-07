@@ -43,68 +43,86 @@ module.exports = function(bot, builder) {
         });
 
     bot.dialog('addMe', [
-        function(session, args, next) {
+        function(session) {
             if (!helper.CheckMessage(session)) {
                 dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
                     if (!error) {
-                        var defaultDraftId = draftResults[0].PartitionKey._;
-                        var teamId = helper.GetTeamId(session);
-                        var userId = helper.GetUserId(session);
-                        dataOps.GetPlayerDraftMappingById(teamId, defaultDraftId, userId, function(results, error) {
-                            if (!error) {
-                                if (results && results.length > 0) {
-                                    session.endConversation('You\'re already in the default draft!');
-                                } else {
-                                    session.send('Alright, let\'s add you as a player!');
-                                    dataOps.GetSingleUserObj(teamId, userId, function(results, error) {
-                                        if (!error) {
-                                            if (results && results.length > 0 && results[0].playerName) {
-                                                // user is already in our db, so don't prompt them for a new nickname
-                                                session.userData.userName = results[0].playerName._;
-                                                console.log(`User ${session.userData.userName} already in the user db, not prompting for a new nickname...`);
-                                                next();
-                                            } else {
-                                                builder.Prompts.text(session, 'What should I call you?');
-                                            }
-                                        } else {
-                                            session.endConversation(`Something went wrong querying user by id, contact tech support!`);
-                                        }                                     
-                                    });                                    
-                                }
-                            } else {
-                                session.endConversation(`Something went wrong querying draft-user mapping, contact tech support!`);
-                            }
-                        });
+                        session.userData.draftIdForAddMe = draftResults[0].PartitionKey._;
+                        builder.Prompts.choice(session, `About to run command **add me** on default draft ${session.userData.draftIdForAddMe}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another draft');
                     } else {
-                        session.endConversation(`Something went wrong querying default draft, contact tech support!`);
+                        session.endConversation('Couldn\'t fetch default draft, contact tech support!');
                     }
-                });
+                });                
             } else {
                 session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
             }
+        },
+        function(session, results, next) {
+            if (results.response.entity === 'yes') {
+                next();
+            } else {
+                dataOps.GetDraftList(helper.GetTeamId(session), function(draftResults, error) {
+                    if (!error) {
+                        var draftListForSelection = [];
+                        for (var i = 0; i < draftResults.length; i++) {
+                            draftListForSelection.push(`${draftResults[i].PartitionKey._}: ${draftResults[i].RowKey._}`.substr(0, 20));
+                        }
+
+                        builder.Prompts.choice(session, 
+                            'Ready to select a draft for the **add me** operation - which one would you like? (or \'q\' to quit):', 
+                            draftListForSelection
+                        );
+                    } else {
+                        session.endConversation('Couldn\'t get draft list, consult tech support!');
+                    }
+                });
+            }
+        },
+        function(session, results, next) {
+            if (results.response) {
+                var command = results.response.entity;
+                session.userData.draftIdForAddMe = command.substr(0, String(command).indexOf(':'));
+            }
+            var teamId = helper.GetTeamId(session);
+            var userId = helper.GetUserId(session);
+            dataOps.GetPlayerDraftMappingById(teamId, session.userData.draftIdForAddMe, userId, function(results, error) {
+                if (!error) {
+                    if (results && results.length > 0) {
+                        session.endConversation('You\'re already in the default draft!');
+                    } else {
+                        session.send('Alright, let\'s add you as a player!');
+                        dataOps.GetSingleUserObj(teamId, userId, function(results, error) {
+                            if (!error) {
+                                if (results && results.length > 0 && results[0].playerName) {
+                                    // user is already in our db, so don't prompt them for a new nickname
+                                    session.userData.userName = results[0].playerName._;
+                                    console.log(`User ${session.userData.userName} already in the user db, not prompting for a new nickname...`);
+                                    next();
+                                } else {
+                                    builder.Prompts.text(session, 'What should I call you?');
+                                }
+                            } else {
+                                session.endConversation(`Something went wrong querying user by id, contact tech support!`);
+                            }                                     
+                        });                                    
+                    }
+                } else {
+                    session.endConversation(`Something went wrong querying draft-user mapping, contact tech support!`);
+                }
+            });           
         },
         function (session, results) {
             if (results.response) {
                 session.userData.userName = results.response;
             }
 
-            dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
+            dataOps.AddPlayer(helper.GetTeamId(session), helper.GetUserId(session), session.userData.userName, session.userData.draftIdForAddMe, function(error) {
                 if (!error) {
-                    var defaultDraftId = draftResults[0].PartitionKey._;
-                    
-                    dataOps.AddPlayer(helper.GetTeamId(session), helper.GetUserId(session), session.userData.userName, defaultDraftId, function(error) {
-                        if (!error) {
-                            session.endConversation('Successfully added you to the default draft!');
-                        } else {
-                            session.endConversation(`Something went wrong adding player, contact tech support!`);
-                        }
-                    });
-
+                    session.endConversation('Successfully added you to the specified draft!');
                 } else {
-                    session.endConversation('Couldn\'t get default draft, consult tech support!');
+                    session.endConversation(`Something went wrong adding player, contact tech support!`);
                 }
             });
-            
         }
     ])
         .triggerAction({
@@ -115,11 +133,47 @@ module.exports = function(bot, builder) {
     bot.dialog('addPlayer', [
         function(session) {
             if (!helper.CheckMessage(session)) {
-                session.send('Alright, let\'s add a player!');
-                builder.Prompts.text(session, 'What should I call the new player?');
+                dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
+                    if (!error) {
+                        session.userData.draftIdForAddPlayer = draftResults[0].PartitionKey._;
+                        builder.Prompts.choice(session, `About to run command **add player** on default draft ${session.userData.draftIdForAddPlayer}: ${draftResults[0].RowKey._}, is this what you want?`, 'yes|pick another draft');
+                    } else {
+                        session.endConversation('Couldn\'t fetch default draft, contact tech support!');
+                    }
+                });                
             } else {
                 session.endConversation('DEBUG: squelching conversation - only respond to DMs or mentions in channels');
             }
+        },
+        function(session, results, next) {
+            if (results.response.entity === 'yes') {
+                next();
+            } else {
+                dataOps.GetDraftList(helper.GetTeamId(session), function(draftResults, error) {
+                    if (!error) {
+                        var draftListForSelection = [];
+                        for (var i = 0; i < draftResults.length; i++) {
+                            draftListForSelection.push(`${draftResults[i].PartitionKey._}: ${draftResults[i].RowKey._}`.substr(0, 20));
+                        }
+
+                        builder.Prompts.choice(session, 
+                            'Ready to select a draft for the **add player** operation - which one would you like? (or \'q\' to quit):', 
+                            draftListForSelection
+                        );
+                    } else {
+                        session.endConversation('Couldn\'t get draft list, consult tech support!');
+                    }
+                });
+            }
+        },
+        function(session, results) {
+            if (results.response) {
+                var command = results.response.entity;
+                session.userData.draftIdForAddPlayer = command.substr(0, String(command).indexOf(':'));
+            }    
+            
+            session.send('Alright, let\'s add a player!');
+            builder.Prompts.text(session, 'What should I call the new player?');
         },
         function (session, results, next) {
             if (results.response) {
@@ -143,20 +197,11 @@ module.exports = function(bot, builder) {
             if (results.response) {
                 session.userData.userIdToAdd = results.response;
             }
-            dataOps.GetDefaultDraftObj(helper.GetTeamId(session), function(draftResults, error) {
+            dataOps.AddPlayer(helper.GetTeamId(session), session.userData.userIdToAdd, session.userData.userNameToAdd, session.userData.draftIdForAddPlayer, function(error) {
                 if (!error) {
-                    var defaultDraftId = draftResults[0].PartitionKey._;
-                    
-                    dataOps.AddPlayer(helper.GetTeamId(session), session.userData.userIdToAdd, session.userData.userNameToAdd, defaultDraftId, function(error) {
-                        if (!error) {
-                            session.endConversation('Successfully added the specified player to the default draft!');
-                        } else {
-                            session.endConversation(`Something went wrong adding player, contact tech support!`);
-                        }
-                    });
-
+                    session.endConversation('Successfully added the specified player to the specified draft!');
                 } else {
-                    session.endConversation('Couldn\'t get default draft, consult tech support!');
+                    session.endConversation(`Something went wrong adding player, contact tech support!`);
                 }
             });
         }
@@ -261,6 +306,9 @@ module.exports = function(bot, builder) {
                                 for (var i = 0; i < draftedRareArray.length; i++) {
                                     var rareStr = '';
                                     rareStr += draftedRareArray[i].name;
+                                    if (draftedRareArray[i].isFoil) {
+                                        rareStr += ' (foil)';
+                                    }
                                     rareStr += ` (Buy: $${helper.DecorateBuyPrice(draftedRareArray[i].buyPrice, draftedRareArray[i].name, draftedRareArray[i].isFoil)})`;
                                     rareList.push(rareStr);
                                 }

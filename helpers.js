@@ -49,6 +49,9 @@ function CheckMessage(session) {
             } 
         } else if (address.channelId.toLowerCase() === 'emulator') {
             shouldSquelch = false;
+            dataOps.CreateTables('emulator');
+            session.userData.teamId = 'emulator';
+            theTeamId = 'emulator';
             session.send('DEBUG: I see that you\'re on an emulator endpoint!');
             if (session.message.text.indexOf('azurebot') >= 0) {
                 session.send('DEBUG: You mentioned me');
